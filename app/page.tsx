@@ -1,7 +1,7 @@
 export default function Home() {
   return (
-    <h1 className="text-3xl font-bold underline">
-      HI
-    </h1>
+    <main className="container mx-auto px-4 py-8">
+       
+      </main>
   )
 }
