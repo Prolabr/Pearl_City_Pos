@@ -9,7 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import {
   Table,
   TableBody,
@@ -113,6 +118,27 @@ export const CustomerReceipt = () => {
     ]);
   };
 
+  const handleGeneratePDF = () => {
+    if (!customerName || !nicPassport || sources.length === 0) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required customer details.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    generatePDF({
+      serialNo,
+      date,
+      customerName,
+      nicPassport,
+      sources,
+      otherSource,
+      rows,
+    });
+  };
+
   return (
     <Card className="shadow-[var(--shadow-medium)]">
       <CardHeader className="bg-gradient-to-r from-primary to-primary/90 text-primary-foreground">
@@ -125,7 +151,12 @@ export const CustomerReceipt = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="permitNo">Permit No: DFE/RD/6000</Label>
-            <Input id="permitNo" value="DFE/RD/6000" disabled className="bg-muted" />
+            <Input
+              id="permitNo"
+              value="DFE/RD/6000"
+              disabled
+              className="bg-muted"
+            />
           </div>
 
           <div className="space-y-2">
@@ -140,7 +171,12 @@ export const CustomerReceipt = () => {
 
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
@@ -166,19 +202,41 @@ export const CustomerReceipt = () => {
 
         {/* Source of Foreign Currency */}
         <div>
-          <Label className="text-base font-semibold">Source of Foreign Currency *</Label>
+          <Label className="text-base font-semibold">
+            Source of Foreign Currency *
+          </Label>
           <div className="border border-gray-300 rounded-lg divide-y divide-gray-300">
             {(
               [
-                { key: "vacation", label: "a) Persons return for vacation from foreign employment" },
-                { key: "relatives", label: "b) Relatives of those employees abroad" },
-                { key: "tourists", label: "c) Foreign tourists (directly or through tour guides)" },
-                { key: "unutilized", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
+                {
+                  key: "vacation",
+                  label:
+                    "a) Persons return for vacation from foreign employment",
+                },
+                {
+                  key: "relatives",
+                  label: "b) Relatives of those employees abroad",
+                },
+                {
+                  key: "tourists",
+                  label:
+                    "c) Foreign tourists (directly or through tour guides)",
+                },
+                {
+                  key: "unutilized",
+                  label:
+                    "d) Unutilized foreign currency obtained for travel purpose by residents",
+                },
                 { key: "other", label: "e) Other" },
               ] as const
             ).map((item) => (
-              <label key={item.key} className="flex justify-between items-center px-3 py-2">
-                <span className="text-gray-800 text-sm md:text-base">{item.label}</span>
+              <label
+                key={item.key}
+                className="flex justify-between items-center px-3 py-2"
+              >
+                <span className="text-gray-800 text-sm md:text-base">
+                  {item.label}
+                </span>
                 {item.key === "other" && (
                   <div className="flex items-center gap-2">
                     <Input
@@ -192,14 +250,16 @@ export const CustomerReceipt = () => {
                         if (!sources.includes("other")) toggleSource("other");
                       }}
                     />
-                    <span className="text-xs text-gray-500">If other specify</span>
+                    <span className="text-xs text-gray-500">
+                      If other specify
+                    </span>
                   </div>
                 )}
                 <input
                   type="checkbox"
                   checked={sources.includes(item.key)}
                   onChange={() => toggleSource(item.key)}
-                  className="appearance-none border-2 border-gray-400 rounded-sm w-6 h-6 checked:bg-blue-600 checked:border-blue-600 cursor-pointer transition-all"
+                  className="appearance-none border-2 border-gray-400 rounded-sm w-12 h-6 checked:bg-blue-600 checked:border-blue-600 cursor-pointer transition-all"
                 />
               </label>
             ))}
@@ -233,7 +293,9 @@ export const CustomerReceipt = () => {
                     <TableCell>
                       <Select
                         value={row.currencyType}
-                        onValueChange={(value) => updateRow(row.id, "currencyType", value)}
+                        onValueChange={(value) =>
+                          updateRow(row.id, "currencyType", value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
@@ -256,7 +318,9 @@ export const CustomerReceipt = () => {
                         type="number"
                         step="0.01"
                         value={row.amountReceived}
-                        onChange={(e) => updateRow(row.id, "amountReceived", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "amountReceived", e.target.value)
+                        }
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -266,7 +330,9 @@ export const CustomerReceipt = () => {
                         type="number"
                         step="0.01"
                         value={row.rate}
-                        onChange={(e) => updateRow(row.id, "rate", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "rate", e.target.value)
+                        }
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -312,17 +378,7 @@ export const CustomerReceipt = () => {
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4">
           <Button
-            onClick={() =>
-              generatePDF({
-                serialNo,
-                date,
-                customerName,
-                nicPassport,
-                sources,
-                otherSource,
-                rows,
-              })
-            }
+            onClick={handleGeneratePDF}
             size="lg"
             variant="outline"
             className="gap-2"

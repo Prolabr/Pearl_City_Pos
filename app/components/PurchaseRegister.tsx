@@ -36,20 +36,8 @@ export const PurchaseRegister = () => {
       rate: "320.50",
       amountRs: "160250.00",
       remarks: "Tourist exchange"
-    },
-    {
-      id: "2",
-      date: "2024-10-27",
-      serialNo: "002",
-      customerName: "Sarah Williams",
-      nicPassport: "N1234567",
-      source: "Unutilized travel funds",
-      currencyType: "EUR",
-      amountFcy: "300.00",
-      rate: "350.75",
-      amountRs: "105225.00",
-      remarks: "Return from vacation"
     }
+    
   ]);
 
   const filteredPurchases = purchases.filter(purchase =>

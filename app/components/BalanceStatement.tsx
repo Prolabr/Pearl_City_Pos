@@ -32,37 +32,8 @@ export const BalanceStatement = () => {
       sales: "8000.00",
       deposits: "3000.00",
       closingBalance: "9500.00"
-    },
-    {
-      currencyType: "GBP",
-      openingBalance: "8000.00",
-      purchases: "3000.00",
-      exchangeBuy: "1000.00",
-      exchangeSell: "800.00",
-      sales: "4000.00",
-      deposits: "1500.00",
-      closingBalance: "5700.00"
-    },
-    {
-      currencyType: "EUR",
-      openingBalance: "10000.00",
-      purchases: "4000.00",
-      exchangeBuy: "1500.00",
-      exchangeSell: "1200.00",
-      sales: "5500.00",
-      deposits: "2000.00",
-      closingBalance: "6800.00"
-    },
-    {
-      currencyType: "AUD",
-      openingBalance: "5000.00",
-      purchases: "2000.00",
-      exchangeBuy: "500.00",
-      exchangeSell: "400.00",
-      sales: "3000.00",
-      deposits: "1000.00",
-      closingBalance: "3100.00"
     }
+    
   ]);
 
   const calculateTotal = (field: keyof CurrencyBalance) => {
