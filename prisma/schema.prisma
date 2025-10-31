@@ -16,10 +16,18 @@ model CustomerReceipt {
   customerName            String?
   nicPassport             String?
   sourceOfForeignCurrency String?
-  currencyType            String?  // store currency code input by user
-  amountFcy               Decimal  @db.Decimal(18,4) @default(0)
-  rateOffered             Decimal  @db.Decimal(18,6) @default(0)
-  amountIssuedLkr         Decimal  @db.Decimal(18,2) @default(0)
   remarks                 String?
   createdAt               DateTime @default(now())
+
+  currencies              CustomerReceiptCurrency[]
+}
+
+model CustomerReceiptCurrency {
+  id             BigInt   @id @default(autoincrement())
+  receipt         CustomerReceipt @relation(fields: [receiptId], references: [id])
+  receiptId       BigInt
+  currencyType    String
+  amountFcy       Decimal  @db.Decimal(18,4) @default(0)
+  rateOffered     Decimal  @db.Decimal(18,6) @default(0)
+  amountIssuedLkr Decimal  @db.Decimal(18,2) @default(0)
 }
