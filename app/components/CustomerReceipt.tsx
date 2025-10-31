@@ -34,15 +34,7 @@ export const CustomerReceipt = () => {
   const [nicPassport, setNicPassport] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [otherSource, setOtherSource] = useState("");
-  const [rows, setRows] = useState<CurrencyRow[]>([
-    {
-      id: "1",
-      currencyType: "",
-      amountReceived: "",
-      rate: "",
-      amountIssued: "",
-    },
-  ]);
+  const [rows, setRows] = useState<CurrencyRow[]>([]); 
 
   const addRow = () => {
     setRows([
@@ -86,36 +78,32 @@ export const CustomerReceipt = () => {
     }
   };
 
-  const handleSave = () => {
-    if (!customerName || !nicPassport || sources.length === 0) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required customer details.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Receipt Saved",
-      description: `Transaction recorded for ${customerName}`,
+  const handleSave = async () => {
+     try {
+    const res = await fetch("/api/customer-receipt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        serialNo,
+        date,
+        customerName,
+        nicPassport,
+        sources,
+        otherSource,
+        rows,
+      }),
     });
 
-    setSerialNo("");
-    setDate(new Date().toISOString().split("T")[0]);
-    setCustomerName("");
-    setNicPassport("");
-    setSources([]);
-    setOtherSource("");
-    setRows([
-      {
-        id: "1",
-        currencyType: "",
-        amountReceived: "",
-        rate: "",
-        amountIssued: "",
-      },
-    ]);
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error);
+
+    toast({ title: "Receipt Saved", description: data.message });
+    // reset form here
+  } catch (err: any) {
+    toast({ title: "Error", description: err.message, variant: "destructive" });
+  }
+
   };
 
   const handleGeneratePDF = () => {
