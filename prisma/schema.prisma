@@ -13,3 +13,40 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Currency {
+  id      Int      @id @default(autoincrement())
+  code    String   @unique
+  name    String?
+  symbol  String?
+  receipts CustomerReceipt[]
+  rates   ExchangeRate[]
+}
+
+model ExchangeRate {
+  id         Int       @id @default(autoincrement())
+  currency   Currency  @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+  currencyId Int
+  rateDate   DateTime
+  buyRate    Decimal?  @db.Decimal(18, 6)
+  sellRate   Decimal?  @db.Decimal(18, 6)
+
+  @@unique([currencyId, rateDate])
+}
+
+model CustomerReceipt {
+  id                      BigInt   @id @default(autoincrement())
+  permitNo                String   @default("DEF/RD/6000")
+  serialNumber            String   @unique
+  receiptDate             DateTime
+  customerName            String?
+  nicPassport             String?
+  sourceOfForeignCurrency String?
+  currencyId              Int
+  currency                Currency @relation(fields: [currencyId], references: [id])
+  amountFcy               Decimal  @db.Decimal(18,4) @default(0)
+  rateOffered             Decimal  @db.Decimal(18,6) @default(0)
+  amountIssuedLkr         Decimal  @db.Decimal(18,2) @default(0)
+  remarks                 String?
+  createdAt               DateTime @default(now())
+}
