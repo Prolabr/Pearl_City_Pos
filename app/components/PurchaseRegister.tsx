@@ -1,53 +1,72 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Search } from "lucide-react";
+import { toast } from "../hooks/use-toast";
+
+interface CurrencyDetail {
+  currencyType: string;
+  amountFcy: string;
+  rate: string;
+  amountIssuedLkr: string;
+}
 
 interface PurchaseRecord {
   id: string;
   date: string;
-  serialNo: string;
+  serialNumber: string;
   customerName: string;
   nicPassport: string;
-  source: string;
-  currencyType: string;
-  amountFcy: string;
-  rate: string;
-  amountRs: string;
+  sourceOfForeignCurrency: string[];
   remarks: string;
+  currencies: CurrencyDetail[];
 }
 
 export const PurchaseRegister = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Mock data - in a real app, this would come from a database
-  const [purchases] = useState<PurchaseRecord[]>([
-    {
-      id: "1",
-      date: "2024-10-27",
-      serialNo: "001",
-      customerName: "John Smith",
-      nicPassport: "987654321V",
-      source: "Foreign tourists",
-      currencyType: "USD",
-      amountFcy: "500.00",
-      rate: "320.50",
-      amountRs: "160250.00",
-      remarks: "Tourist exchange"
-    }
-    
-  ]);
+  const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
 
-  const filteredPurchases = purchases.filter(purchase =>
+  useEffect(() => {
+    const fetchPurchases = async () => {
+      try {
+       const res = await fetch("/api/purchase-register");
+        console.log("Response status:", res.status);
+      
+      if (!res.ok) {
+        // Try to parse error message if JSON, else fallback
+        let errorMsg = `HTTP error ${res.status}`;
+        try {
+          const errData = await res.json();
+          errorMsg = errData?.error || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
+      // Only parse JSON if content exists
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : [];
+      
+      setPurchases(data);
+      } catch (err) {
+        console.error(err);
+        toast({ title: "Error", description: "Failed to load purchases", variant: "destructive" });
+      }
+    };
+    fetchPurchases();
+  }, []);
+
+  const filteredPurchases = purchases.filter((purchase) =>
     purchase.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     purchase.nicPassport.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.serialNo.includes(searchTerm)
+    purchase.serialNumber.includes(searchTerm)
   );
 
   const totalAmountRs = filteredPurchases.reduce(
-    (sum, purchase) => sum + parseFloat(purchase.amountRs || "0"),
+    (sum, purchase) => sum + purchase.currencies.reduce((s, c) => s + parseFloat(c.amountIssuedLkr || "0"), 0),
     0
   );
 
@@ -57,6 +76,7 @@ export const PurchaseRegister = () => {
         <CardTitle className="text-2xl">Purchase Register</CardTitle>
         <p className="text-sm opacity-90">Complete Transaction History</p>
       </CardHeader>
+
       <CardContent className="pt-6 space-y-6">
         {/* Search Bar */}
         <div className="space-y-2">
@@ -109,24 +129,32 @@ export const PurchaseRegister = () => {
               </TableHeader>
               <TableBody>
                 {filteredPurchases.length > 0 ? (
-                  filteredPurchases.map((purchase) => (
-                    <TableRow key={purchase.id} className="hover:bg-muted/30">
-                      <TableCell className="font-medium">{purchase.date}</TableCell>
-                      <TableCell>{purchase.serialNo}</TableCell>
-                      <TableCell>{purchase.customerName}</TableCell>
-                      <TableCell>{purchase.nicPassport}</TableCell>
-                      <TableCell>{purchase.source}</TableCell>
-                      <TableCell>
-                        <span className="px-2 py-1 bg-primary/10 text-primary rounded text-sm font-semibold">
-                          {purchase.currencyType}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">{purchase.amountFcy}</TableCell>
-                      <TableCell className="text-right font-mono">{purchase.rate}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">{purchase.amountRs}</TableCell>
-                      <TableCell className="text-muted-foreground">{purchase.remarks}</TableCell>
-                    </TableRow>
-                  ))
+                  filteredPurchases.map((purchase) =>
+                    purchase.currencies.map((currency, index) => (
+                      <TableRow key={`${purchase.id}-${currency.currencyType}`} className="hover:bg-muted/30">
+                        {index === 0 && (
+                          <>
+                            <TableCell rowSpan={purchase.currencies.length}>{purchase.date}</TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>{purchase.serialNumber}</TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>{purchase.customerName}</TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>{purchase.nicPassport}</TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>{purchase.sourceOfForeignCurrency.join(", ")}</TableCell>
+                          </>
+                        )}
+                        <TableCell>
+                          <span className="px-2 py-1 bg-primary/10 text-primary rounded text-sm font-semibold">
+                            {currency.currencyType}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{currency.amountFcy}</TableCell>
+                        <TableCell className="text-right font-mono">{currency.rate}</TableCell>
+                        <TableCell className="text-right font-mono font-semibold">{currency.amountIssuedLkr}</TableCell>
+                        {index === 0 && (
+                          <TableCell rowSpan={purchase.currencies.length} className="text-muted-foreground">{purchase.remarks}</TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )
                 ) : (
                   <TableRow>
                     <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
