@@ -9,6 +9,7 @@ import {BalanceStatement} from "./components/BalanceStatement";
 export default function Home() {
   const [activeTab, setActiveTab] = useState("receipt");
 
+  
   return (
     <main className="container mx-auto px-4 py-8">
       <Tabs

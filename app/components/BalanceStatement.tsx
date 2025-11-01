@@ -34,12 +34,22 @@ export const BalanceStatement = () => {
     },
   ]);
 
+
   // Helper to calculate totals dynamically
   const calculateTotal = (field: keyof CurrencyBalance) => {
     return balances
       .reduce((sum, balance) => sum + parseFloat(balance[field] || "0"), 0)
       .toFixed(2);
   };
+
+  const fetchBalanceData = async () => {
+  const res = await fetch(
+    `/api/balance-statement?fromDate=${fromDate}&toDate=${toDate}`
+  );
+  const data = await res.json();
+  setBalances(data);
+};
+
 
   // Function to recompute closing balance
   const computeClosingBalance = (b: CurrencyBalance) => {
@@ -87,7 +97,7 @@ export const BalanceStatement = () => {
             />
           </div>
           <div className="flex items-end">
-            <Button className="w-full bg-gradient-to-r from-accent to-accent/90">
+            <Button onClick={fetchBalanceData} className="w-full bg-gradient-to-r from-accent to-accent/90">
               Generate Report
             </Button>
           </div>
