@@ -18,29 +18,39 @@ interface CurrencyBalance {
 }
 
 export const BalanceStatement = () => {
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0]);
+  const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
 
-  // Mock data - in a real app, this would come from a database
-  const [balances] = useState<CurrencyBalance[]>([
+  const [balances, setBalances] = useState<CurrencyBalance[]>([
     {
       currencyType: "USD",
       openingBalance: "15000.00",
       purchases: "5000.00",
-      exchangeBuy: "2000.00",
-      exchangeSell: "1500.00",
-      sales: "8000.00",
+      exchangeBuy: "0.00",
+      exchangeSell: "0.00",
+      sales: "0.00",
       deposits: "3000.00",
-      closingBalance: "9500.00"
-    }
-    
+      closingBalance: "9500.00",
+    },
   ]);
 
+  // Helper to calculate totals dynamically
   const calculateTotal = (field: keyof CurrencyBalance) => {
-    return balances.reduce(
-      (sum, balance) => sum + parseFloat(balance[field] as string || "0"),
-      0
-    ).toFixed(2);
+    return balances
+      .reduce((sum, balance) => sum + parseFloat(balance[field] || "0"), 0)
+      .toFixed(2);
+  };
+
+  // Function to recompute closing balance
+  const computeClosingBalance = (b: CurrencyBalance) => {
+    const closing =
+      parseFloat(b.openingBalance || "0") +
+      parseFloat(b.purchases || "0") +
+      parseFloat(b.exchangeBuy || "0") -
+      parseFloat(b.exchangeSell || "0") -
+      parseFloat(b.sales || "0") -
+      parseFloat(b.deposits || "0");
+    return closing.toFixed(2);
   };
 
   return (
@@ -90,21 +100,21 @@ export const BalanceStatement = () => {
               <DollarSign className="h-5 w-5" />
               <p className="text-sm font-medium">Total Opening Balance</p>
             </div>
-            <p className="text-2xl font-bold">{calculateTotal('openingBalance')}</p>
+            <p className="text-2xl font-bold">{calculateTotal("openingBalance")}</p>
           </div>
           <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 text-primary mb-2">
               <TrendingUp className="h-5 w-5" />
               <p className="text-sm font-medium">Total Purchases</p>
             </div>
-            <p className="text-2xl font-bold">{calculateTotal('purchases')}</p>
+            <p className="text-2xl font-bold">{calculateTotal("purchases")}</p>
           </div>
           <div className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border border-accent/20">
             <div className="flex items-center gap-2 text-accent mb-2">
               <DollarSign className="h-5 w-5" />
               <p className="text-sm font-medium">Total Closing Balance</p>
             </div>
-            <p className="text-2xl font-bold">{calculateTotal('closingBalance')}</p>
+            <p className="text-2xl font-bold">{calculateTotal("closingBalance")}</p>
           </div>
         </div>
 
@@ -121,7 +131,9 @@ export const BalanceStatement = () => {
                   <TableHead className="text-right">Exchange-Sell (d)</TableHead>
                   <TableHead className="text-right">Sales (e)</TableHead>
                   <TableHead className="text-right">Deposits/Sales (f)</TableHead>
-                  <TableHead className="text-right font-semibold">Closing Balance</TableHead>
+                  <TableHead className="text-right font-semibold">
+                    Closing Balance
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -137,21 +149,46 @@ export const BalanceStatement = () => {
                     <TableCell className="text-right font-mono text-accent">{balance.exchangeBuy}</TableCell>
                     <TableCell className="text-right font-mono text-destructive">{balance.exchangeSell}</TableCell>
                     <TableCell className="text-right font-mono text-destructive">{balance.sales}</TableCell>
-                    <TableCell className="text-right font-mono text-destructive">{balance.deposits}</TableCell>
+
+                    {/* Editable Deposits Input */}
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        value={balance.deposits}
+                        onChange={(e) => {
+                          const newDeposits = e.target.value;
+                          setBalances((prev) =>
+                            prev.map((b, i) => {
+                              if (i === index) {
+                                const updated = { ...b, deposits: newDeposits };
+                                return {
+                                  ...updated,
+                                  closingBalance: computeClosingBalance(updated),
+                                };
+                              }
+                              return b;
+                            })
+                          );
+                        }}
+                        className="text-right font-mono w-24"
+                      />
+                    </TableCell>
+
                     <TableCell className="text-right font-mono font-bold text-primary">
                       {balance.closingBalance}
                     </TableCell>
                   </TableRow>
                 ))}
+
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell>TOTAL</TableCell>
-                  <TableCell className="text-right font-mono">{calculateTotal('openingBalance')}</TableCell>
-                  <TableCell className="text-right font-mono text-accent">{calculateTotal('purchases')}</TableCell>
-                  <TableCell className="text-right font-mono text-accent">{calculateTotal('exchangeBuy')}</TableCell>
-                  <TableCell className="text-right font-mono text-destructive">{calculateTotal('exchangeSell')}</TableCell>
-                  <TableCell className="text-right font-mono text-destructive">{calculateTotal('sales')}</TableCell>
-                  <TableCell className="text-right font-mono text-destructive">{calculateTotal('deposits')}</TableCell>
-                  <TableCell className="text-right font-mono text-primary">{calculateTotal('closingBalance')}</TableCell>
+                  <TableCell className="text-right font-mono">{calculateTotal("openingBalance")}</TableCell>
+                  <TableCell className="text-right font-mono text-accent">{calculateTotal("purchases")}</TableCell>
+                  <TableCell className="text-right font-mono text-accent">{calculateTotal("exchangeBuy")}</TableCell>
+                  <TableCell className="text-right font-mono text-destructive">{calculateTotal("exchangeSell")}</TableCell>
+                  <TableCell className="text-right font-mono text-destructive">{calculateTotal("sales")}</TableCell>
+                  <TableCell className="text-right font-mono text-destructive">{calculateTotal("deposits")}</TableCell>
+                  <TableCell className="text-right font-mono text-primary">{calculateTotal("closingBalance")}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
