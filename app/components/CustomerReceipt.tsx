@@ -290,13 +290,14 @@ export const CustomerReceipt = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
                           <SelectItem value="GBP">GBP</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="CHF">CHF</SelectItem>
                           <SelectItem value="AUD">AUD</SelectItem>
-                          <SelectItem value="JPY">JPY</SelectItem>
-                          <SelectItem value="CNY">CNY</SelectItem>
+                          <SelectItem value="NZD">NZD</SelectItem>
                           <SelectItem value="SGD">SGD</SelectItem>
                           <SelectItem value="INR">INR</SelectItem>
+                          <SelectItem value="CAD">CAD</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
