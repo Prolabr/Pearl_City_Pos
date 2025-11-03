@@ -1,109 +1,97 @@
+// app/api/balance-statement/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../libs/prisma"; // adjust path to your prisma client
-import { Decimal } from "@prisma/client/runtime/library";
+import { prisma } from "../../libs/prisma"; 
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const fromDate = searchParams.get("fromDate");
-    const toDate = searchParams.get("toDate");
+    const { startDate, endDate } = await req.json();
 
-    if (!fromDate || !toDate) {
-      return NextResponse.json({ error: "Missing date range" }, { status: 400 });
+    if (!startDate || !endDate) {
+      return NextResponse.json({ error: "startDate and endDate required" }, { status: 400 });
     }
 
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-    // --- Opening Balances (before fromDate) ---
-    const openings = await prisma.customerReceiptCurrency.groupBy({
+    // 1) Opening balances per currency (all receipts before start)
+    const openingRaw = await prisma.customerReceiptCurrency.groupBy({
       by: ["currencyType"],
       where: {
         receipt: {
-          receiptDate: {
-            lt: from,
-          },
+          receiptDate: { lt: start },
         },
       },
-      _sum: { amountFcy: true },
+      _sum: {
+        amountFcy: true,
+      },
     });
 
-    // --- Purchases during the selected period ---
-    const purchases = await prisma.customerReceiptCurrency.groupBy({
+    // 2) Purchases per currency (receipts inside the date range)
+    const purchasesRaw = await prisma.customerReceiptCurrency.groupBy({
       by: ["currencyType"],
       where: {
         receipt: {
-          receiptDate: {
-            gte: from,
-            lte: to,
-          },
+          receiptDate: { gte: start, lte: end },
         },
       },
-      _sum: { amountFcy: true },
+      _sum: {
+        amountFcy: true,
+      },
     });
 
-    // Merge and compute
-    const balanceMap: Record<
-      string,
-      {
-        currencyType: string;
-        openingBalance: number;
-        purchases: number;
-        exchangeBuy: number;
-        exchangeSell: number;
-        sales: number;
-        deposits: number;
-        closingBalance: number;
-      }
-    > = {};
+    // convert to maps for easy merging
+    const openingMap = new Map<string, number>();
+    for (const r of openingRaw) {
+      openingMap.set(r.currencyType, Number(r._sum.amountFcy ?? 0));
+    }
+    const purchasesMap = new Map<string, number>();
+    for (const r of purchasesRaw) {
+      purchasesMap.set(r.currencyType, Number(r._sum.amountFcy ?? 0));
+    }
 
-    // Add opening balances
-    openings.forEach((o) => {
-      balanceMap[o.currencyType] = {
-        currencyType: o.currencyType,
-        openingBalance: Number(o._sum.amountFcy ?? 0),
-        purchases: 0,
-        exchangeBuy: 0,
-        exchangeSell: 0,
-        sales: 0,
-        deposits: 0,
-        closingBalance: 0,
-      };
-    });
+    // 3) Gather list of currencies seen in either opening or purchases
+    const currencySet = new Set<string>();
+    openingMap.forEach((_, k) => currencySet.add(k));
+    purchasesMap.forEach((_, k) => currencySet.add(k));
 
-    // Add purchases
-    purchases.forEach((p) => {
-      if (!balanceMap[p.currencyType]) {
-        balanceMap[p.currencyType] = {
-          currencyType: p.currencyType,
-          openingBalance: 0,
-          purchases: 0,
-          exchangeBuy: 0,
-          exchangeSell: 0,
-          sales: 0,
-          deposits: 0,
-          closingBalance: 0,
-        };
-      }
-      balanceMap[p.currencyType].purchases = Number(p._sum.amountFcy ?? 0);
-    });
+    // 4) Placeholder: Query Exchange-Buy, Exchange-Sell, Sales, Deposits
+    // TODO: Replace these placeholders with real queries to your tables.
+    // For now we return 0 for those, so the result will be correct for receipts-only flows.
+    // Example if you have a table `exchangeTransactions` with fields currencyType, amount, type ('buy'|'sell'):
+    //   const exchangeBuyRaw = await prisma.exchangeTransactions.groupBy({ by: ['currencyType'], where: { date: { gte: start, lte: end }, type: 'buy' }, _sum: { amount: true } });
 
-    // Compute closing balances
-    Object.values(balanceMap).forEach((b) => {
-      b.closingBalance =
-        b.openingBalance +
-        b.purchases +
-        b.exchangeBuy -
-        b.exchangeSell -
-        b.sales -
-        b.deposits;
-    });
+    const rows: Array<any> = [];
 
-    const results = Object.values(balanceMap);
+    for (const currency of Array.from(currencySet)) {
+      const opening = openingMap.get(currency) ?? 0;
+      const purchases = purchasesMap.get(currency) ?? 0;
 
-    return NextResponse.json(results);
-  } catch (error: any) {
-    console.error(error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+      // placeholders — replace with real values from your other models
+      const exchangeBuy = 0;
+      const exchangeSell = 0;
+      const sales = 0;
+      const deposits = 0;
+
+      const closing = opening + purchases + exchangeBuy - exchangeSell - sales - deposits;
+
+      rows.push({
+        currencyType: currency,
+        openingBalance: opening,
+        purchases: purchases,
+        exchangeBuy,
+        exchangeSell,
+        sales,
+        deposits,
+        closingBalance: closing,
+      });
+    }
+
+    // Sort rows by currency name for predictability
+    rows.sort((a, b) => (a.currencyType > b.currencyType ? 1 : -1));
+
+    return NextResponse.json({ startDate, endDate, rows });
+  } catch (err) {
+    console.error("Error in balance-statement:", err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
