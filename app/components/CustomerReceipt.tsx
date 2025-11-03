@@ -28,6 +28,9 @@ import {
 import { toast } from "../hooks/use-toast";
 import { Plus, Trash2, Save } from "lucide-react";
 import { generatePDF } from "../components/pdfGenerator";
+import { blacklistedCustomers } from "../libs/blacklist";
+
+
 
 export interface CurrencyRow {
   id: string;
@@ -98,6 +101,25 @@ export const CustomerReceipt = () => {
       });
       return;
     }
+
+    // Blacklisted customer check
+    const isBlackListed = blacklistedCustomers.some((entry)=>{
+      return (
+      (entry.nic && entry.nic === nicPassport) || // check NIC
+      (entry.passport && entry.passport === nicPassport) || // check Passport
+      (entry.name && entry.name.toLowerCase() === customerName.toLowerCase()) // optional name check
+    );
+    })
+
+    if (isBlackListed) {
+    toast({
+      title: "Blacklisted Customer",
+      description: "Receipt cannot be issued to this customer.",
+      variant: "destructive",
+    });
+    return; 
+  }
+
 
     try {
       const res = await fetch("/api/customer-receipt", {
