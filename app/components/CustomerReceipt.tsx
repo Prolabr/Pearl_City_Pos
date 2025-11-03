@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -24,8 +26,16 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
-import { Plus, Trash2, Save, FileDown } from "lucide-react";
-import { generatePDF, CurrencyRow } from "../components/pdfGenerator";
+import { Plus, Trash2, Save } from "lucide-react";
+import { generatePDF } from "../components/pdfGenerator";
+
+export interface CurrencyRow {
+  id: string;
+  currencyType: string;
+  amountReceived: string;
+  rate: string;
+  amountIssued: string;
+}
 
 export const CustomerReceipt = () => {
   const [serialNo, setSerialNo] = useState("");
@@ -34,25 +44,24 @@ export const CustomerReceipt = () => {
   const [nicPassport, setNicPassport] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [otherSource, setOtherSource] = useState("");
-  const [rows, setRows] = useState<CurrencyRow[]>([]); 
+  const [rows, setRows] = useState<CurrencyRow[]>([
+    { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
+  ]);
 
+  // Add a new row
   const addRow = () => {
     setRows([
       ...rows,
-      {
-        id: Date.now().toString(),
-        currencyType: "",
-        amountReceived: "",
-        rate: "",
-        amountIssued: "",
-      },
+      { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
     ]);
   };
 
+  // Remove a row
   const removeRow = (id: string) => {
     if (rows.length > 1) setRows(rows.filter((r) => r.id !== id));
   };
 
+  // Update row and calculate amountIssued
   const updateRow = (id: string, field: keyof CurrencyRow, value: string) => {
     setRows(
       rows.map((r) => {
@@ -70,6 +79,7 @@ export const CustomerReceipt = () => {
     );
   };
 
+  // Toggle source selection
   const toggleSource = (key: string) => {
     if (sources.includes(key)) {
       setSources(sources.filter((s) => s !== key));
@@ -78,35 +88,8 @@ export const CustomerReceipt = () => {
     }
   };
 
-  const handleSave = async () => {
-     try {
-    const res = await fetch("/api/customer-receipt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        serialNo,
-        date,
-        customerName,
-        nicPassport,
-        sources,
-        otherSource,
-        rows,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.error);
-
-    toast({ title: "Receipt Saved", description: data.message });
-    // reset form here
-  } catch (err: any) {
-    toast({ title: "Error", description: err.message, variant: "destructive" });
-  }
-
-  };
-
-  const handleGeneratePDF = () => {
+  // Save receipt and generate PDF
+  const handleSaveAndDownload = async () => {
     if (!customerName || !nicPassport || sources.length === 0) {
       toast({
         title: "Missing Information",
@@ -116,15 +99,55 @@ export const CustomerReceipt = () => {
       return;
     }
 
-    generatePDF({
-      serialNo,
-      date,
-      customerName,
-      nicPassport,
-      sources,
-      otherSource,
-      rows,
-    });
+    try {
+      const res = await fetch("/api/customer-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serialNo,
+          date,
+          customerName,
+          nicPassport,
+          sources,
+          otherSource,
+          rows,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      toast({ title: "Receipt Saved", description: data.message });
+
+      // Generate PDF using the saved data
+      generatePDF({
+        serialNo: data.receipt.serialNumber,
+        date: data.receipt.receiptDate,
+        customerName: data.receipt.customerName,
+        nicPassport: data.receipt.nicPassport,
+        sources: data.receipt.sourceOfForeignCurrency.split(", "),
+        otherSource: data.receipt.remarks || "",
+        rows: data.receipt.currencies.map((c: any) => ({
+          id: c.id,
+          currencyType: c.currencyType,
+          amountReceived: c.amountFcy.toString(),
+          rate: c.rateOffered.toString(),
+          amountIssued: c.amountIssuedLkr.toString(),
+        })),
+      });
+
+      // Reset form after save + PDF
+      setSerialNo("");
+      setCustomerName("");
+      setNicPassport("");
+      setSources([]);
+      setOtherSource("");
+      setRows([
+        { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
+      ]);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -139,12 +162,7 @@ export const CustomerReceipt = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="permitNo">Permit No: DFE/RD/6000</Label>
-            <Input
-              id="permitNo"
-              value="DFE/RD/6000"
-              disabled
-              className="bg-muted"
-            />
+            <Input id="permitNo" value="DFE/RD/6000" disabled className="bg-muted" />
           </div>
 
           <div className="space-y-2">
@@ -196,35 +214,15 @@ export const CustomerReceipt = () => {
           <div className="border border-gray-300 rounded-lg divide-y divide-gray-300">
             {(
               [
-                {
-                  key: "vacation",
-                  label:
-                    "a) Persons return for vacation from foreign employment",
-                },
-                {
-                  key: "relatives",
-                  label: "b) Relatives of those employees abroad",
-                },
-                {
-                  key: "tourists",
-                  label:
-                    "c) Foreign tourists (directly or through tour guides)",
-                },
-                {
-                  key: "unutilized",
-                  label:
-                    "d) Unutilized foreign currency obtained for travel purpose by residents",
-                },
+                { key: "vacation", label: "a) Persons return for vacation from foreign employment" },
+                { key: "relatives", label: "b) Relatives of those employees abroad" },
+                { key: "tourists", label: "c) Foreign tourists (directly or through tour guides)" },
+                { key: "unutilized", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
                 { key: "other", label: "e) Other" },
               ] as const
             ).map((item) => (
-              <label
-                key={item.key}
-                className="flex justify-between items-center px-3 py-2"
-              >
-                <span className="text-gray-800 text-sm md:text-base">
-                  {item.label}
-                </span>
+              <label key={item.key} className="flex justify-between items-center px-3 py-2">
+                <span className="text-gray-800 text-sm md:text-base">{item.label}</span>
                 {item.key === "other" && (
                   <div className="flex items-center gap-2">
                     <Input
@@ -238,9 +236,7 @@ export const CustomerReceipt = () => {
                         if (!sources.includes("other")) toggleSource("other");
                       }}
                     />
-                    <span className="text-xs text-gray-500">
-                      If other specify
-                    </span>
+                    <span className="text-xs text-gray-500">If other specify</span>
                   </div>
                 )}
                 <input
@@ -281,23 +277,15 @@ export const CustomerReceipt = () => {
                     <TableCell>
                       <Select
                         value={row.currencyType}
-                        onValueChange={(value) =>
-                          updateRow(row.id, "currencyType", value)
-                        }
+                        onValueChange={(value) => updateRow(row.id, "currencyType", value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="CHF">CHF</SelectItem>
-                          <SelectItem value="AUD">AUD</SelectItem>
-                          <SelectItem value="NZD">NZD</SelectItem>
-                          <SelectItem value="SGD">SGD</SelectItem>
-                          <SelectItem value="INR">INR</SelectItem>
-                          <SelectItem value="CAD">CAD</SelectItem>
+                          {["USD", "GBP", "EUR", "CHF", "AUD", "NZD", "SGD", "INR", "CAD"].map((cur) => (
+                            <SelectItem key={cur} value={cur}>{cur}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -307,9 +295,7 @@ export const CustomerReceipt = () => {
                         type="number"
                         step="0.01"
                         value={row.amountReceived}
-                        onChange={(e) =>
-                          updateRow(row.id, "amountReceived", e.target.value)
-                        }
+                        onChange={(e) => updateRow(row.id, "amountReceived", e.target.value)}
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -319,9 +305,7 @@ export const CustomerReceipt = () => {
                         type="number"
                         step="0.01"
                         value={row.rate}
-                        onChange={(e) =>
-                          updateRow(row.id, "rate", e.target.value)
-                        }
+                        onChange={(e) => updateRow(row.id, "rate", e.target.value)}
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -349,39 +333,20 @@ export const CustomerReceipt = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-                {rows.length < 3 &&
-                  [...Array(3 - rows.length)].map((_, index) => (
-                    <TableRow key={`empty-${index}`}>
-                      <TableCell className="h-10"></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  ))}
               </TableBody>
             </Table>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4">
+        {/* Save & Download Button */}
+        <div className="flex justify-end pt-4">
           <Button
-            onClick={handleGeneratePDF}
-            size="lg"
-            variant="outline"
-            className="gap-2"
-          >
-            <FileDown className="h-4 w-4" />
-            Generate PDF
-          </Button>
-          <Button
-            onClick={handleSave}
+            onClick={handleSaveAndDownload}
             size="lg"
             className="gap-2 bg-gradient-to-r from-accent to-accent/90"
           >
             <Save className="h-4 w-4" />
-            Save Receipt
+            Save & Download PDF
           </Button>
         </div>
       </CardContent>

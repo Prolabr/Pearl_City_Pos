@@ -11,15 +11,10 @@ interface CurrencyDetail {
   currencyType: string;
   amountFcy: string;
   rate: string;
-  amountIssuedLkr: string;
 }
 
 interface PurchaseRecord {
   id: string;
-  date: string;
-  serialNumber: string;
-  customerName: string;
-  nicPassport: string;
   sourceOfForeignCurrency: string[];
   remarks: string;
   currencies: CurrencyDetail[];

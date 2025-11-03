@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
           })),
         },
       },
+      include: {
+    currencies: true, 
+  },
     });
 
     return NextResponse.json({
