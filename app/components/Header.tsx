@@ -23,7 +23,7 @@ const Header = () => {
 
           {/* Contact Info */}
           <div className="text-sm md:text-base opacity-90 space-y-1">
-            <p>17, Baudhaloka Mawatha, Colombo - 04</p>
+            <p>17, Bauddhaloka Mawatha, Colombo - 04</p>
             <p>Tel: 0114523800 (Auto Lines)</p>
           </div>
 
