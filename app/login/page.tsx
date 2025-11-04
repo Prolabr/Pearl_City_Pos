@@ -3,6 +3,14 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "../components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,13 +18,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  async function handleLogin(e:React.FormEvent<HTMLFormElement>) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const res = await signIn("credentials", {
       redirect: false,
       email,
-      password
+      password,
     });
 
     if (res?.error) {
@@ -28,41 +36,50 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex justify-center items-center h-screen">
-      <form
-        onSubmit={handleLogin}
-        className="p-6 border rounded-lg shadow w-96"
-      >
-        <h1 className="text-xl mb-4">Login</h1>
+    <div className="flex justify-center items-start min-h-screen pt-20 bg-gray-50">
+       <Card className="w-96 min-h-[24rem] max-h-screen flex flex-col justify-between shadow-lg">
+        <form onSubmit={handleLogin} className="flex flex-col h-full">
+          <CardHeader>
+            <CardTitle>Login</CardTitle>
+            <CardDescription>
+              Enter your credentials to access the dashboard
+            </CardDescription>
+          </CardHeader>
 
-        <input
-          className="border p-2 w-full mb-3"
-          placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
-        />
+          <CardContent className="flex flex-col space-y-4 flex-1">
+            <input
+              className="border p-3 rounded w-full text-base"
+              placeholder="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
 
-        <input
-          className="border p-2 w-full mb-3"
-          placeholder="Password"
-          type="password"
-          onChange={(e) => setPassword(e.target.value)}
-        />
+            <input
+              className="border p-3 rounded w-full text-base"
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
 
-        {error && (
-          <p className="text-red-500 mb-3">{error}</p>
-        )}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+          </CardContent>
 
-        <button className="bg-blue-600 text-white p-2 w-full rounded">
-          Login
-        </button>
+          <CardFooter className="flex flex-col space-y-3">
+            <button className="bg-blue-600 text-white p-3 w-full rounded text-lg">
+              Login
+            </button>
 
-        <a
-          href="/forgot-password"
-          className="text-sm block mt-3 text-blue-600"
-        >
-          Forgot password?
-        </a>
-      </form>
+            <a
+              href="/forgot-password"
+              className="text-sm text-blue-600 text-center"
+            >
+              Forgot password?
+            </a>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }
