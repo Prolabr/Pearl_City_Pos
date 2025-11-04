@@ -34,6 +34,7 @@ model CustomerReceipt {
 
   currencies              CustomerReceiptCurrency[]
   pdfs                    ReceiptPDF[]
+  balanceAdjustments      BalanceAdjustment[]
 }
 
 model CustomerReceiptCurrency {
@@ -54,5 +55,17 @@ model ReceiptPDF {
   createdAt   DateTime @default(now())
 
   receipt     CustomerReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+}
+
+model BalanceAdjustment {
+  id             BigInt   @id @default(autoincrement())
+  receiptId      BigInt
+  currencyType   String
+  adjustmentType String   // "deposit" | "sale"
+  amount         Decimal  @db.Decimal(18,4)
+  createdAt      DateTime @default(now())
+  createdById    BigInt?
+
+  receipt        CustomerReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
 }
 
