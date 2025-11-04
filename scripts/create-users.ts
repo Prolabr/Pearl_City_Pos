@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 
 async function main() {
   const emails = [
-    "abc@gmail.com"
+    "prabhashanimaheshika@gmail.com"
   ];
 
   for (const email of emails) {
