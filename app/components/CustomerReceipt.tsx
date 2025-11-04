@@ -445,7 +445,7 @@ if (pdfBase64) {
         </div>
 
         <div className="space-y-4 pt-8">
-            <h2 className="text-xl font-bold">Recent Downloadable Receipts (7-Day Link)</h2>
+            <h2 className="text-xl font-bold">Issued Receipts in past 7 days</h2>
             {recentPDFs.length === 0 ? (
                 <p className="text-sm text-gray-500">No recent PDFs found on the server.</p>
             ) : (
