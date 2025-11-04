@@ -31,7 +31,7 @@ export const generatePDF = ({
   sources,
   otherSource,
   rows,
-}: PDFData) => {
+}: PDFData,downloadOnClient: boolean = false):string | undefined => {
   // Input validation
   if (!customerName || !nicPassport || sources.length === 0) {
     toast({
@@ -233,10 +233,16 @@ export const generatePDF = ({
     signatureLineY + signatureGap
   );
 
-  doc.save(`Receipt-${serialNo || Date.now()}.pdf`);
-
-  toast({
-    title: "PDF Generated",
-    description: `Receipt downloaded for ${customerName}`,
-  });
+  // --- Return Base64 or initiate client download ---
+  if (downloadOnClient) {
+    doc.save(`Receipt-${serialNo || Date.now()}.pdf`);
+    toast({
+      title: "PDF Generated",
+      description: `Receipt downloaded for ${customerName}`,
+    });
+    return undefined;
+  }
+  
+  // Return the Base64 string for server storage
+  return doc.output("datauristring").split('base64,')[1];
 };
