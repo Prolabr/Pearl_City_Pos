@@ -31,7 +31,7 @@ export const generatePDF = ({
   sources,
   otherSource,
   rows,
-}: PDFData) => {
+}: PDFData,downloadOnClient: boolean = false):string | undefined => {
   // Input validation
   if (!customerName || !nicPassport || sources.length === 0) {
     toast({
@@ -142,11 +142,11 @@ export const generatePDF = ({
   currentY += 5;
 
   const sourcesText = [
-    { key: "vacation", label: "a) Persons return for vacation from foreign employment" },
-    { key: "relatives", label: "b) Relatives of those employees abroad" },
-    { key: "tourists", label: "c) Foreign tourists (directly or through tour guides)" },
-    { key: "unutilized", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
-    { key: "other", label: "e) Other" },
+    { key: "Persons return for vacation from foreign employment", label: "a) Persons return for vacation from foreign employment" },
+    { key: "Relatives of those employees abroadives", label: "b) Relatives of those employees abroad" },
+    { key: "Foreign tourists (directly or through tour guides)", label: "c) Foreign tourists (directly or through tour guides)" },
+    { key: "Unutilized foreign currency obtained for travel purpose by residents", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
+    { key: "Other", label: "e) Other" },
   ];
 
   const checkboxX = pageWidth - margin - 8;
@@ -233,10 +233,16 @@ export const generatePDF = ({
     signatureLineY + signatureGap
   );
 
-  doc.save(`Receipt-${serialNo || Date.now()}.pdf`);
-
-  toast({
-    title: "PDF Generated",
-    description: `Receipt downloaded for ${customerName}`,
-  });
+  // --- Return Base64 or initiate client download ---
+  if (downloadOnClient) {
+    doc.save(`Receipt-${serialNo || Date.now()}.pdf`);
+    toast({
+      title: "PDF Generated",
+      description: `Receipt downloaded for ${customerName}`,
+    });
+    return undefined;
+  }
+  
+  // Return the Base64 string for server storage
+  return doc.output("datauristring").split('base64,')[1];
 };

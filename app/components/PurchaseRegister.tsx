@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Search } from "lucide-react";
 import { toast } from "../hooks/use-toast";
+import { CurrencySummary } from "./CurrencySummary";
 
 interface CurrencyDetail {
   currencyType: string;
@@ -166,6 +167,7 @@ export const PurchaseRegister = () => {
             </Table>
           </div>
         </div>
+        <CurrencySummary purchases={filteredPurchases}/>
       </CardContent>
     </Card>
   );
