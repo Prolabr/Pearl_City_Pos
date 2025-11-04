@@ -308,16 +308,16 @@ if (pdfBase64) {
           <div className="border border-gray-300 rounded-lg divide-y divide-gray-300">
             {(
               [
-                { key: "vacation", label: "a) Persons return for vacation from foreign employment" },
-                { key: "relatives", label: "b) Relatives of those employees abroad" },
-                { key: "tourists", label: "c) Foreign tourists (directly or through tour guides)" },
-                { key: "unutilized", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
-                { key: "other", label: "e) Other" },
+                { key: "Persons return for vacation from foreign employment", label: "a) Persons return for vacation from foreign employment" },
+                { key: "Relatives of those employees abroad", label: "b) Relatives of those employees abroad" },
+                { key: "Foreign tourists (directly or through tour guides)", label: "c) Foreign tourists (directly or through tour guides)" },
+                { key: "d) Unutilized foreign currency obtained for travel purpose by residents", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
+                { key: "Other", label: "e) Other" },
               ] as const
             ).map((item) => (
               <label key={item.key} className="flex justify-between items-center px-3 py-2">
                 <span className="text-gray-800 text-sm md:text-base">{item.label}</span>
-                {item.key === "other" && (
+                {item.key === "Other" && (
                   <div className="flex items-center gap-2">
                     <Input
                       type="text"
