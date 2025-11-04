@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -26,10 +26,10 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { toast } from "../hooks/use-toast";
-import { Plus, Trash2, Save } from "lucide-react";
-import { generatePDF } from "../components/pdfGenerator";
+import { Plus, Trash2, Save, Download } from "lucide-react";
+import { generatePDF,PDFData } from "../components/pdfGenerator";
 import { blacklistedCustomers } from "../libs/blacklist";
-
+import Link from "next/link";
 
 
 export interface CurrencyRow {
@@ -38,6 +38,13 @@ export interface CurrencyRow {
   amountReceived: string;
   rate: string;
   amountIssued: string;
+}
+
+interface SavedPDF { 
+  id: string;
+  fileName: string;
+  filePath: string;
+  createdAt: string;
 }
 
 export const CustomerReceipt = () => {
@@ -50,6 +57,32 @@ export const CustomerReceipt = () => {
   const [rows, setRows] = useState<CurrencyRow[]>([
     { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
   ]);
+  const [recentPDFs, setRecentPDFs] = useState<SavedPDF[]>([]);
+
+  // Function to fetch recent PDFs
+  const fetchRecentPDFs = async () => {
+    try {
+      const res = await fetch("/api/customer-receipt/pdfs");
+      const data = await res.json();
+      if (res.ok) {
+        // Sort by newest first
+        setRecentPDFs(data.pdfs.sort((a: SavedPDF, b: SavedPDF) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch recent PDFs:", err);
+      // Optional toast for error
+    }
+  };
+
+  // Fetch PDFs on initial load
+  useEffect(() => {
+    fetchRecentPDFs();
+  }, []);
+
 
   // Add a new row
   const addRow = () => {
@@ -122,7 +155,7 @@ export const CustomerReceipt = () => {
 
 
     try {
-      const res = await fetch("/api/customer-receipt", {
+      const saveRes = await fetch("/api/customer-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,29 +169,61 @@ export const CustomerReceipt = () => {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error);
 
-      toast({ title: "Receipt Saved", description: data.message });
+      const newReceipt = saveData.receipt;
+      const receiptId = newReceipt.id; // Get the ID of the new receipt
+      const receiptSerial = newReceipt.serialNumber;
+      
+      toast({ title: "Receipt Saved", description: saveData.message });
 
-      // Generate PDF using the saved data
-      generatePDF({
-        serialNo: data.receipt.serialNumber,
-        date: data.receipt.receiptDate,
-        customerName: data.receipt.customerName,
-        nicPassport: data.receipt.nicPassport,
-        sources: data.receipt.sourceOfForeignCurrency.split(", "),
-        otherSource: data.receipt.remarks || "",
-        rows: data.receipt.currencies.map((c: any) => ({
+
+     // 2. Generate PDF Base64 string for server storage
+      const pdfData: PDFData = {
+        serialNo: newReceipt.serialNumber,
+        date: newReceipt.receiptDate.split("T")[0], // Use the date from the server
+        customerName: newReceipt.customerName,
+        nicPassport: newReceipt.nicPassport,
+        // The server sends the joined string, so we split it back
+        sources: newReceipt.sourceOfForeignCurrency.split(", ").filter(Boolean),
+        otherSource: newReceipt.remarks || "",
+        rows: newReceipt.currencies.map((c: any) => ({
           id: c.id,
           currencyType: c.currencyType,
           amountReceived: c.amountFcy.toString(),
           rate: c.rateOffered.toString(),
           amountIssued: c.amountIssuedLkr.toString(),
         })),
-      });
+      };
 
-      // Reset form after save + PDF
+      // Generate PDF Base64 for the server
+      const pdfBase64 = generatePDF(pdfData); 
+      const fileName = `Receipt-${receiptSerial}.pdf`;
+
+if (pdfBase64) {
+        // 3. Save PDF to server and DB
+        const savePdfRes = await fetch("/api/customer-receipt/save-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            receiptId,
+            fileName,
+            pdfBase64,
+          }),
+        });
+
+        const savePdfData = await savePdfRes.json();
+        if (!savePdfRes.ok) throw new Error(savePdfData.error);
+        
+        // 4. Client-side download (Uses the old function logic for immediate download)
+        generatePDF(pdfData, true); // Call generatePDF again, forcing client download
+        
+        // 5. Update the list of recent PDFs
+        fetchRecentPDFs(); 
+      }
+      
+      // 6. Reset form after save + PDF (Same as before)
       setSerialNo("");
       setCustomerName("");
       setNicPassport("");
@@ -167,8 +232,15 @@ export const CustomerReceipt = () => {
       setRows([
         { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
       ]);
+      
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      // Improved error handling to show both save and PDF errors
+      const errorMsg = err.message.startsWith("Failed to fetch") ? "Could not connect to server" : err.message;
+      toast({ 
+        title: "Error", 
+        description: `Failed to process receipt: ${errorMsg}`, 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -370,6 +442,38 @@ export const CustomerReceipt = () => {
             <Save className="h-4 w-4" />
             Save & Download PDF
           </Button>
+        </div>
+
+        <div className="space-y-4 pt-8">
+            <h2 className="text-xl font-bold">Recent Downloadable Receipts (7-Day Link)</h2>
+            {recentPDFs.length === 0 ? (
+                <p className="text-sm text-gray-500">No recent PDFs found on the server.</p>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>File Name</TableHead>
+                            <TableHead>Date Created</TableHead>
+                            <TableHead className="w-20">Download</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {recentPDFs.map((pdf) => (
+                            <TableRow key={pdf.id}>
+                                <TableCell className="font-medium">{pdf.fileName}</TableCell>
+                                <TableCell>{new Date(pdf.createdAt).toLocaleString()}</TableCell>
+                                <TableCell>
+                                    <Link href={pdf.filePath} passHref target="_blank">
+                                        <Button variant="ghost" size="icon">
+                                            <Download className="h-4 w-4 text-primary" />
+                                        </Button>
+                                    </Link>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
         </div>
       </CardContent>
     </Card>
