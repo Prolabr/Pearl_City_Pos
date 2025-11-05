@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../libs/prisma";
 
-// List of the 9 currencies accepted by the app
-const CURRENCIES = [
-  "USD",
-  "GBP",
-  "EUR",
-  "CHF",
-  "AUD",
-  "NZD",
-  "SGD",
-  "INR",
-  "CAD",
-];
+const CURRENCIES = ["USD","GBP","EUR","CHF","AUD","NZD","SGD","INR","CAD"];
+
+type CurrencyBalance = {
+  currencyType: string;
+  openingBalance: string;
+  purchases: string;
+  exchangeBuy: string;
+  exchangeSell: string;
+  sales: string;
+  deposits: string;
+  closingBalance: string;
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,55 +26,33 @@ export async function GET(req: NextRequest) {
 
     const from = new Date(fromDateParam);
     const to = new Date(toDateParam);
-    // Make the `to` inclusive to the end of that day
     to.setHours(23, 59, 59, 999);
 
-    // Helper to safely convert Prisma Decimal | null -> number
-    const decimalToNumber = (val: any) => {
-      if (val === null || val === undefined) return 0;
-      // Prisma returns Decimal which usually has .toNumber() or .toString()
-      if (typeof val.toNumber === "function") return val.toNumber();
-      if (typeof val.toString === "function") return parseFloat(val.toString());
-      return Number(val);
-    };
+    const results: CurrencyBalance[] = [];
 
-    const results: Array<Record<string, string>> = [];
-
-    // For each supported currency compute sums
     for (const currency of CURRENCIES) {
-      // Sum of ALL previous transactions (before `from`) -> opening balance
+      // Opening balance = sum of all receipts **before fromDate**
       const openingAgg = await prisma.customerReceiptCurrency.aggregate({
-        _sum: {
-          amountFcy: true,
-        },
+        _sum: { amountFcy: true },
         where: {
           currencyType: currency,
-          receipt: {
-            receiptDate: { lt: from },
-          },
+          receipt: { receiptDate: { lt: from } },
         },
       });
 
-      // Sum of transactions inside the requested range -> purchases
+      // Purchases in the selected date range
       const purchasesAgg = await prisma.customerReceiptCurrency.aggregate({
-        _sum: {
-          amountFcy: true,
-        },
+        _sum: { amountFcy: true },
         where: {
           currencyType: currency,
-          receipt: {
-            receiptDate: { gte: from, lte: to },
-          },
+          receipt: { receiptDate: { gte: from, lte: to } },
         },
       });
 
-      // NOTE: at the moment other fields (exchangeBuy, exchangeSell, sales, deposits)
-      // are not represented in the CustomerReceipt model. We set them to 0 here.
-      // In future you can replace these with aggregates from their respective tables
-      // (purchase register, exchange transactions, sales register, deposit register).
+      const opening = openingAgg._sum.amountFcy ? Number(openingAgg._sum.amountFcy) : 0;
+      const purchases = purchasesAgg._sum.amountFcy ? Number(purchasesAgg._sum.amountFcy) : 0;
 
-      const opening = decimalToNumber(openingAgg._sum.amountFcy);
-      const purchases = decimalToNumber(purchasesAgg._sum.amountFcy);
+      // At the moment other fields are not tracked in your DB, set to 0
       const exchangeBuy = 0;
       const exchangeSell = 0;
       const sales = 0;
@@ -95,8 +73,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(results);
-  } catch (error) {
-    console.error("balance-statement error:", error);
+  } catch (err) {
+    console.error("balance-statement error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
