@@ -192,7 +192,7 @@ export const CustomerReceipt = () => {
       if (!saveRes.ok) throw new Error(saveData.error);
 
       const newReceipt = saveData.receipt;
-      const receiptId = newReceipt.id; // Get the ID of the new receipt
+      const receiptId = newReceipt.id; 
       const receiptSerial = newReceipt.serialNumber;
 
       toast({ title: "Receipt Saved", description: saveData.message });
