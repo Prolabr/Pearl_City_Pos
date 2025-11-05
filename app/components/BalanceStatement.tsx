@@ -32,7 +32,9 @@ interface CurrencyBalance {
 }
 
 export const BalanceStatement = () => {
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split("T")[0]);
+  const [fromDate, setFromDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [toDate, setToDate] = useState(new Date().toISOString().split("T")[0]);
   const [balances, setBalances] = useState<CurrencyBalance[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,8 +63,15 @@ export const BalanceStatement = () => {
 
       // Filter currencies: show only those with opening or any transaction
       const visibleBalances = updatedData.filter((b) => {
-        const hasTransactions = ["purchases", "exchangeBuy", "exchangeSell", "sales", "deposits"]
-          .some((field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0);
+        const hasTransactions = [
+          "purchases",
+          "exchangeBuy",
+          "exchangeSell",
+          "sales",
+          "deposits",
+        ].some(
+          (field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0
+        );
         const hasOpening = parseFloat(b.openingBalance || "0") !== 0;
         return hasOpening || hasTransactions;
       });
@@ -78,6 +87,57 @@ export const BalanceStatement = () => {
   useEffect(() => {
     fetchBalanceData();
   }, []);
+
+  const handleDepositChange = (index: number, newValue: string) => {
+    setBalances((prev) =>
+      prev.map((b, i) => {
+        if (i === index) {
+          const updated = { ...b, deposits: newValue };
+
+          const closing =
+            parseFloat(updated.openingBalance || "0") +
+            parseFloat(updated.purchases || "0") +
+            parseFloat(updated.exchangeBuy || "0") -
+            parseFloat(updated.exchangeSell || "0") -
+            parseFloat(updated.sales || "0") -
+            parseFloat(updated.deposits || "0");
+
+          return {
+            ...updated,
+            closingBalance: closing.toFixed(2),
+          };
+        }
+        return b;
+      })
+    );
+  };
+
+const handleSaveDeposit = async (index: number) => {
+  const row = balances[index];
+
+  try {
+    const res = await fetch("/api/balance-statement/update-deposit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currencyType: row.currencyType,
+        date: toDate,  // ✅ REQUIRED by backend
+        deposits: parseFloat(row.deposits || "0")
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      console.error("Server error:", error);
+      throw new Error("Failed to save deposit");
+    }
+
+    // Refresh table after saving
+    await fetchBalanceData();
+  } catch (err) {
+    console.error("Error saving:", err);
+  }
+};
 
   return (
     <Card className="shadow-[var(--shadow-medium)]">
@@ -129,14 +189,20 @@ export const BalanceStatement = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Currency</TableHead>
-                  <TableHead className="text-right">Opening (a)</TableHead>
+                  <TableHead className="font-semibold">Currency Type</TableHead>
+                  <TableHead className="text-right">Opening Balance(a)</TableHead>
                   <TableHead className="text-right">Purchases (b)</TableHead>
                   <TableHead className="text-right">Exchange-Buy (c)</TableHead>
-                  <TableHead className="text-right">Exchange-Sell (d)</TableHead>
+                  <TableHead className="text-right">
+                    Exchange-Sell (d)
+                  </TableHead>
                   <TableHead className="text-right">Sales (e)</TableHead>
-                  <TableHead className="text-right">Deposits/Sales (f)</TableHead>
-                  <TableHead className="text-right font-semibold">Closing</TableHead>
+                  <TableHead className="text-right">
+                    Deposits to the Authorized Dealer(f)
+                  </TableHead>
+                  <TableHead className="text-right font-semibold">
+                    Closing Balance
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -148,37 +214,42 @@ export const BalanceStatement = () => {
                         {balance.currencyType}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-mono">{balance.openingBalance}</TableCell>
-                    <TableCell className="text-right font-mono text-accent">{balance.purchases}</TableCell>
-                    <TableCell className="text-right font-mono text-accent">{balance.exchangeBuy}</TableCell>
-                    <TableCell className="text-right font-mono text-destructive">{balance.exchangeSell}</TableCell>
-                    <TableCell className="text-right font-mono text-destructive">{balance.sales}</TableCell>
-                    <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        value={balance.deposits}
-                        onChange={(e) => {
-                          const newDeposits = e.target.value;
-                          setBalances((prev) =>
-                            prev.map((b, i) => {
-                              if (i === index) {
-                                const updated = { ...b, deposits: newDeposits };
-                                const closing =
-                                  parseFloat(updated.openingBalance || "0") +
-                                  parseFloat(updated.purchases || "0") +
-                                  parseFloat(updated.exchangeBuy || "0") -
-                                  parseFloat(updated.exchangeSell || "0") -
-                                  parseFloat(updated.sales || "0") -
-                                  parseFloat(updated.deposits || "0");
-                                return { ...updated, closingBalance: closing.toFixed(2) };
-                              }
-                              return b;
-                            })
-                          );
-                        }}
-                        className="text-right font-mono w-24"
-                      />
+                    <TableCell className="text-right font-mono">
+                      {balance.openingBalance}
                     </TableCell>
+                    <TableCell className="text-right font-mono text-accent">
+                      {balance.purchases}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-accent">
+                      {balance.exchangeBuy}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-destructive">
+                      {balance.exchangeSell}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-destructive">
+                      {balance.sales}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2 w-full">
+                        <Input
+                          type="number"
+                          value={balance.deposits}
+                          onChange={(e) =>
+                            handleDepositChange(index, e.target.value)
+                          }
+                          className="text-right font-mono w-24"
+                        />
+
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSaveDeposit(index)}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </TableCell>
+
                     <TableCell className="text-right font-mono font-bold text-primary">
                       {balance.closingBalance}
                     </TableCell>
@@ -189,10 +260,20 @@ export const BalanceStatement = () => {
           </div>
         </div>
 
+        <div className="flex justify-end pt-4">
+          <Button
+            size="lg"
+            className="gap-2 bg-gradient-to-r from-accent to-accent/90"
+          >
+            Download Report
+          </Button>
+        </div>
+
         {/* Formula Note */}
         <div className="p-4 bg-muted/50 rounded-lg border border-border">
           <p className="text-sm text-muted-foreground">
-            <span className="font-semibold">Closing Balance Formula:</span> (a) + (b) + (c) - (d) - (e) - (f)
+            <span className="font-semibold">Closing Balance Formula:</span> (a)
+            + (b) + (c) - (d) - (e) - (f)
           </p>
         </div>
       </CardContent>
