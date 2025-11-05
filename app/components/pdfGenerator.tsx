@@ -50,6 +50,10 @@ export const generatePDF = ({
   let currentY = 15;
   const boxHeight = 7;
 
+  const logoImg = new Image();
+  logoImg.src = "/logo.png";
+  doc.addImage(logoImg, "PNG", margin, currentY, 25, 25);
+  
   // --- Header Section ---
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -152,7 +156,7 @@ export const generatePDF = ({
   const checkboxX = pageWidth - margin - 8;
   const checkboxSize = 5;
   const otherBoxWidth = 50;
-  const otherBoxX = checkboxX - otherBoxWidth - 2;
+  
 
   doc.setFont("helvetica", "normal");
   sourcesText.forEach((src) => {
@@ -167,7 +171,7 @@ export const generatePDF = ({
       doc.setFontSize(10);
     }
 
-    if (src.key === "other") {
+    if (src.key === "Other") {
       doc.rect(labelX + 15, currentY - 4, otherBoxWidth, checkboxSize);
       doc.text(otherSource, labelX + 17, currentY - 1);
 
