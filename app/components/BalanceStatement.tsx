@@ -37,7 +37,7 @@ export const BalanceStatement = () => {
   const [balances, setBalances] = useState<CurrencyBalance[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch balance data
+  // Fetch balance data and compute closing balance
   const fetchBalanceData = async () => {
     try {
       setLoading(true);
@@ -45,13 +45,29 @@ export const BalanceStatement = () => {
         `/api/balance-statement?fromDate=${fromDate}&toDate=${toDate}`
       );
       if (!res.ok) throw new Error("Failed to fetch balance data");
-      const data = await res.json();
-      // Compute closing balances for each record
-      const updatedData = data.map((b: CurrencyBalance) => ({
-        ...b,
-        closingBalance: computeClosingBalance(b),
-      }));
-      setBalances(updatedData);
+      const data: CurrencyBalance[] = await res.json();
+
+      // Compute closing balance for each row
+      const updatedData = data.map((b) => {
+        const closing =
+          parseFloat(b.openingBalance || "0") +
+          parseFloat(b.purchases || "0") +
+          parseFloat(b.exchangeBuy || "0") -
+          parseFloat(b.exchangeSell || "0") -
+          parseFloat(b.sales || "0") -
+          parseFloat(b.deposits || "0");
+        return { ...b, closingBalance: closing.toFixed(2) };
+      });
+
+      // Filter currencies: show only those with opening or any transaction
+      const visibleBalances = updatedData.filter((b) => {
+        const hasTransactions = ["purchases", "exchangeBuy", "exchangeSell", "sales", "deposits"]
+          .some((field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0);
+        const hasOpening = parseFloat(b.openingBalance || "0") !== 0;
+        return hasOpening || hasTransactions;
+      });
+
+      setBalances(visibleBalances);
     } catch (err) {
       console.error("Error fetching balances:", err);
     } finally {
@@ -59,37 +75,9 @@ export const BalanceStatement = () => {
     }
   };
 
-  // Auto-load on mount
   useEffect(() => {
     fetchBalanceData();
   }, []);
-
-  // Compute closing balance
-  const computeClosingBalance = (b: CurrencyBalance) => {
-    const closing =
-      parseFloat(b.openingBalance || "0") +
-      parseFloat(b.purchases || "0") +
-      parseFloat(b.exchangeBuy || "0") -
-      parseFloat(b.exchangeSell || "0") -
-      parseFloat(b.sales || "0") -
-      parseFloat(b.deposits || "0");
-    return closing.toFixed(2);
-  };
-
-  // Filter balances: keep if opening OR any transactions exist
-  const visibleBalances = balances.filter((b) => {
-    const hasTransactions = ["purchases", "exchangeBuy", "exchangeSell", "sales", "deposits"]
-      .some((field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0);
-    const hasOpening = parseFloat(b.openingBalance || "0") !== 0;
-    return hasOpening || hasTransactions;
-  });
-
-  // // Calculate totals dynamically based on visible balances
-  // const calculateTotal = (field: keyof CurrencyBalance) => {
-  //   return visibleBalances
-  //     .reduce((sum, balance) => sum + parseFloat(balance[field] || "0"), 0)
-  //     .toFixed(2);
-  // };
 
   return (
     <Card className="shadow-[var(--shadow-medium)]">
@@ -135,31 +123,6 @@ export const BalanceStatement = () => {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border border-accent/20">
-            <div className="flex items-center gap-2 text-accent mb-2">
-              <DollarSign className="h-5 w-5" />
-              <p className="text-sm font-medium">Total Opening Balance</p>
-            </div>
-            <p className="text-2xl font-bold">{calculateTotal("openingBalance")}</p>
-          </div>
-          <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-            <div className="flex items-center gap-2 text-primary mb-2">
-              <TrendingUp className="h-5 w-5" />
-              <p className="text-sm font-medium">Total Purchases</p>
-            </div>
-            <p className="text-2xl font-bold">{calculateTotal("purchases")}</p>
-          </div>
-          <div className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border border-accent/20">
-            <div className="flex items-center gap-2 text-accent mb-2">
-              <DollarSign className="h-5 w-5" />
-              <p className="text-sm font-medium">Total Closing Balance</p>
-            </div>
-            <p className="text-2xl font-bold">{calculateTotal("closingBalance")}</p>
-          </div>
-        </div> */}
-
         {/* Balance Table */}
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -178,7 +141,7 @@ export const BalanceStatement = () => {
               </TableHeader>
 
               <TableBody>
-                {visibleBalances.map((balance, index) => (
+                {balances.map((balance, index) => (
                   <TableRow key={index} className="hover:bg-muted/30">
                     <TableCell className="font-semibold">
                       <span className="px-2 py-1 bg-primary/10 text-primary rounded text-sm">
@@ -200,10 +163,14 @@ export const BalanceStatement = () => {
                             prev.map((b, i) => {
                               if (i === index) {
                                 const updated = { ...b, deposits: newDeposits };
-                                return {
-                                  ...updated,
-                                  closingBalance: computeClosingBalance(updated),
-                                };
+                                const closing =
+                                  parseFloat(updated.openingBalance || "0") +
+                                  parseFloat(updated.purchases || "0") +
+                                  parseFloat(updated.exchangeBuy || "0") -
+                                  parseFloat(updated.exchangeSell || "0") -
+                                  parseFloat(updated.sales || "0") -
+                                  parseFloat(updated.deposits || "0");
+                                return { ...updated, closingBalance: closing.toFixed(2) };
                               }
                               return b;
                             })
