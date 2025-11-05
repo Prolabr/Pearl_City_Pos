@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../libs/prisma"; // adjust path to your prisma client
+import { updateDailyBalances } from "@/app/libs/updateDailyBalance";
 
 export async function POST(req: NextRequest) {
   try {
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
     currencies: true, 
   },
     });
+    await updateDailyBalances(receipt.id);
 
     return NextResponse.json({
       message: "Receipt saved successfully",
