@@ -57,5 +57,19 @@ model ReceiptPDF {
   receipt     CustomerReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
 }
 
+model DailyCurrencyBalance {
+  id             BigInt   @id @default(autoincrement())
+  currencyType   String
+  date           DateTime
+  openingBalance Decimal  @db.Decimal(18,4) @default(0)
+  purchases      Decimal  @db.Decimal(18,4) @default(0)
+  exchangeBuy    Decimal  @db.Decimal(18,4) @default(0)
+  exchangeSell   Decimal  @db.Decimal(18,4) @default(0)
+  sales          Decimal  @db.Decimal(18,4) @default(0)
+  deposits       Decimal  @db.Decimal(18,4) @default(0)
+  closingBalance Decimal  @db.Decimal(18,4) @default(0)
+
+  @@unique([currencyType, date])
+}
 
 
