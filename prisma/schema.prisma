@@ -52,8 +52,8 @@ model ReceiptPDF {
   receiptId   BigInt   @unique
   fileName    String
   filePath    String
-  createdAt   DateTime @default(now())
-
+  createdAt   DateTime 
+  
   receipt     CustomerReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
 }
 
