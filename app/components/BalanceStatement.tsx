@@ -214,7 +214,7 @@ const handleSaveDeposit = async (index: number) => {
                   </TableHead>
                   <TableHead className="text-right">Sales (e)</TableHead>
                   <TableHead className="text-right">
-                    Deposits to the Authorized Dealer(f)
+                    Deposits/Sales to the Authorized Dealer(f)
                   </TableHead>
                   <TableHead className="text-right font-semibold">
                     Closing Balance
