@@ -86,9 +86,22 @@ export const CustomerReceipt = () => {
     }
   };
 
+const loadSerial = async () => {
+    try {
+      const res = await fetch("/api/customer-receipt/next-serial");
+      const data = await res.json();
+      if (res.ok) setSerialNo(data.nextSerial);
+      else console.error(data.error);
+    } catch (err) {
+      console.error("Failed to load serial:", err);
+    }
+  };
+  
+
   // Fetch PDFs on initial load
   useEffect(() => {
     fetchRecentPDFs();
+    loadSerial();
   }, []);
 
   // Add a new row
@@ -294,6 +307,7 @@ export const CustomerReceipt = () => {
             <Input
               id="serialNo"
               value={serialNo}
+              readOnly
               onChange={(e) => setSerialNo(e.target.value)}
               placeholder="Enter serial number"
             />
