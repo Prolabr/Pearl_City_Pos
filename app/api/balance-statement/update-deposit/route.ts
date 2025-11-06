@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../libs/prisma";
+import { toDayDate } from "../../../libs/day";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,8 +9,12 @@ export async function POST(req: NextRequest) {
     if (!currencyType || !date)
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
 
-    const day = new Date(date);
-    day.setHours(0, 0, 0, 0);
+    // Normalize date to 00:00
+    const day = toDayDate(date);
+    const nextDay = new Date(day);
+    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setHours(0, 0, 0, 0);
+
 
     //Get today's balance record (must already exist)
     let daily = await prisma.dailyCurrencyBalance.findUnique({

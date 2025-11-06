@@ -40,49 +40,65 @@ export const BalanceStatement = () => {
   const [loading, setLoading] = useState(false);
 
   // Fetch balance data and compute closing balance
-  const fetchBalanceData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `/api/balance-statement?fromDate=${fromDate}&toDate=${toDate}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch balance data");
-      const data: CurrencyBalance[] = await res.json();
+ const fetchBalanceData = async () => {
+  try {
+    setLoading(true);
 
-      // Compute closing balance for each row
-      const updatedData = data.map((b) => {
-        const closing =
-          parseFloat(b.openingBalance || "0") +
-          parseFloat(b.purchases || "0") +
-          parseFloat(b.exchangeBuy || "0") -
-          parseFloat(b.exchangeSell || "0") -
-          parseFloat(b.sales || "0") -
-          parseFloat(b.deposits || "0");
-        return { ...b, closingBalance: closing.toFixed(2) };
-      });
+    const res = await fetch(
+      `/api/balance-statement?fromDate=${fromDate}&toDate=${toDate}`
+    );
 
-      // Filter currencies: show only those with opening or any transaction
-      const visibleBalances = updatedData.filter((b) => {
-        const hasTransactions = [
-          "purchases",
-          "exchangeBuy",
-          "exchangeSell",
-          "sales",
-          "deposits",
-        ].some(
-          (field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0
-        );
-        const hasOpening = parseFloat(b.openingBalance || "0") !== 0;
-        return hasOpening || hasTransactions;
-      });
+    if (!res.ok) throw new Error("Failed to fetch balance data");
 
-      setBalances(visibleBalances);
-    } catch (err) {
-      console.error("Error fetching balances:", err);
-    } finally {
-      setLoading(false);
+    const response = await res.json();
+
+    // ✅ Accept API returning array OR object with { rows }
+    const data: CurrencyBalance[] = Array.isArray(response)
+      ? response
+      : response.rows || [];
+
+    if (!Array.isArray(data)) {
+      console.error("Invalid balance response:", response);
+      setBalances([]);
+      return;
     }
-  };
+
+    // ✅ Compute closing balance
+    const updatedData = data.map((b) => {
+      const closing =
+        parseFloat(b.openingBalance || "0") +
+        parseFloat(b.purchases || "0") +
+        parseFloat(b.exchangeBuy || "0") -
+        parseFloat(b.exchangeSell || "0") -
+        parseFloat(b.sales || "0") -
+        parseFloat(b.deposits || "0");
+
+      return { ...b, closingBalance: closing.toFixed(2) };
+    });
+
+    // ✅ Filter visible rows
+    const visibleBalances = updatedData.filter((b) => {
+      const hasTransactions = [
+        "purchases",
+        "exchangeBuy",
+        "exchangeSell",
+        "sales",
+        "deposits",
+      ].some(
+        (field) => parseFloat(b[field as keyof CurrencyBalance] || "0") !== 0
+      );
+      const hasOpening = parseFloat(b.openingBalance || "0") !== 0;
+      return hasOpening || hasTransactions;
+    });
+
+    setBalances(visibleBalances);
+  } catch (err) {
+    console.error("Error fetching balances:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchBalanceData();
