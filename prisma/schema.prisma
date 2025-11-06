@@ -73,3 +73,13 @@ model DailyCurrencyBalance {
 }
 
 
+model DepositRecord {
+  id             BigInt  @id @default(autoincrement())
+  currencyType   String
+  amount         Decimal @db.Decimal(18,4)
+  date           DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([currencyType, date])  
+}
+
