@@ -30,6 +30,17 @@ import { Plus, Trash2, Save, Download } from "lucide-react";
 import { generatePDF, PDFData } from "../components/pdfGenerator";
 import { blacklistedCustomers } from "../libs/blacklist";
 import Link from "next/link";
+import { toDayDate } from "../libs/day";
+
+// Helper to get Sri Lanka date string YYYY-MM-DD
+const getSriLankaDateString = (date: Date = new Date()) => {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+};
+
+// Convert UTC string to Sri Lanka local datetime string
+const formatSriLankaDateTime = (utcString: string) => {
+  return new Date(utcString).toLocaleString("en-LK", { timeZone: "Asia/Colombo" });
+};
 
 export interface CurrencyRow {
   id: string;
@@ -48,7 +59,7 @@ interface SavedPDF {
 
 export const CustomerReceipt = () => {
   const [serialNo, setSerialNo] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getSriLankaDateString());
   const [customerName, setCustomerName] = useState("");
   const [nicPassport, setNicPassport] = useState("");
   const [sources, setSources] = useState<string[]>([]);
@@ -71,8 +82,12 @@ export const CustomerReceipt = () => {
       const data = await res.json();
       if (res.ok) {
         // Sort by newest first
-        setRecentPDFs(
-          data.pdfs.sort(
+        const formattedPDFs = data.pdfs.map((pdf: SavedPDF) => ({
+          ...pdf,
+          createdAt: formatSriLankaDateTime(pdf.createdAt),
+        }));
+      setRecentPDFs(
+          formattedPDFs.sort(
             (a: SavedPDF, b: SavedPDF) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )
@@ -192,7 +207,7 @@ const loadSerial = async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serialNo,
-          date,
+          date: toDayDate(date).toISOString(),
           customerName,
           nicPassport,
           sources,
