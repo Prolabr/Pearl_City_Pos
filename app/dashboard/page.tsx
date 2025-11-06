@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { BookOpen, PieChart, Receipt } from "lucide-react";
 import {CustomerReceipt} from "../components/CustomerReceipt";
 import {PurchaseRegister} from "../components/PurchaseRegister";
-import {BalanceStatement} from "../components/BalanceStatement";
+import BalanceStatement from "../components/BalanceStatement";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("receipt");
