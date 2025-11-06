@@ -52,7 +52,7 @@ export const generatePDF = ({
 
   const logoImg = new Image();
   logoImg.src = "/logo.png";
-  doc.addImage(logoImg, "PNG", margin, currentY, 25, 25);
+  doc.addImage(logoImg, "PNG", 15, 10, 55, 55);
   
   // --- Header Section ---
   doc.setFont("helvetica", "bold");
@@ -84,7 +84,7 @@ export const generatePDF = ({
     currentY,
     { align: "center" }
   );
-  currentY += 12;
+  currentY += 25;
 
   // --- Permit, Serial, Date ---
   const lineY = currentY - 5;
@@ -214,7 +214,7 @@ export const generatePDF = ({
   });
 
   let finalY = (doc as any).lastAutoTable.finalY;
-  currentY = finalY + 12;
+  currentY = finalY + 30;
 
   // --- Signature Sections ---
   doc.setFont("helvetica", "normal");
