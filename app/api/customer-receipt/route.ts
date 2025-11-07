@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../libs/prisma"; // adjust path to your prisma client
 import { updateDailyBalances } from "@/app/libs/updateDailyBalance";
+import { toDayDate } from "@/app/libs/day";
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,11 +53,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const bankDate = toDayDate(date);
+
+
     // Save receipt and its currencies
     const receipt = await prisma.customerReceipt.create({
       data: {
         serialNumber: serialNo,
-        receiptDate: new Date(date),
+        receiptDate: bankDate,
         customerName,
         nicPassport,
         sourceOfForeignCurrency: sources.join(", "),
