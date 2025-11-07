@@ -20,8 +20,8 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
-// ✅ reusable component
 import { DateRangeFilter } from "../ui/DateRangeFilter";
+import { generateBalanceStatementPDF } from "../balanceStatement/pdfGenerator";
 
 interface CurrencyBalance {
   currencyType: string;
@@ -40,6 +40,12 @@ interface DepositRecord {
   amount: number;
   date: Date;
   createdAt: Date;
+}
+
+export interface BalanceStatementPDFData {
+    fromDate: string;
+    toDate: string;
+    balances: CurrencyBalance[];
 }
 
 export default function BalanceStatement() {
@@ -180,6 +186,22 @@ export default function BalanceStatement() {
 
   // ✅ Get available currencies for deposit
   const availableCurrencies = visibleBalances.map(balance => balance.currencyType);
+
+  const handleDownloadReport = () => {
+    const pdfData: BalanceStatementPDFData = {
+      fromDate,
+      toDate,
+      // Use the visibleBalances (filtered rows) for the report
+      balances: visibleBalances, 
+    };
+
+    try {
+        generateBalanceStatementPDF(pdfData);
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        // Add a toast notification here if you have one available, like the CustomerReceipt component
+    }
+  };
 
   return (
     <Card className="shadow-[var(--shadow-medium)]">
@@ -329,7 +351,7 @@ export default function BalanceStatement() {
         </div>
 
         <div className="flex justify-end pt-4">
-          <Button size="lg" className="gap-2 bg-gradient-to-r from-accent to-accent/90">
+          <Button size="lg" className="gap-2 bg-gradient-to-r from-accent to-accent/90" onClick={handleDownloadReport} disabled={visibleBalances.length === 0 || loading}>
             Download Report
           </Button>
         </div>
@@ -343,9 +365,5 @@ export default function BalanceStatement() {
     </Card>
   );
 
-  // ✅ Check if currency has deposits
-  function hasDeposits(currencyType: string): boolean {
-    const records = depositRecords[currencyType];
-    return records && records.length > 0;
-  }
+  
 }
