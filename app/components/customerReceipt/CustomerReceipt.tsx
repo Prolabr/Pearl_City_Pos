@@ -1,22 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
+} from "../ui/select";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "../ui/card";
 import {
   Table,
   TableBody,
@@ -24,13 +24,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
-import { toast } from "../hooks/use-toast";
+} from "../ui/table";
+import { toast } from "../../hooks/use-toast";
 import { Plus, Trash2, Save, Download } from "lucide-react";
-import { generatePDF, PDFData } from "../components/pdfGenerator";
-import { blacklistedCustomers } from "../libs/blacklist";
+import { generatePDF, PDFData } from "./pdfGenerator";
+import { blacklistedCustomers } from "../../libs/blacklist";
 import Link from "next/link";
-import { toDayDate } from "../libs/day";
+import { toDayDate } from "../../libs/day";
 
 // Helper to get Sri Lanka date string YYYY-MM-DD
 const getSriLankaDateString = (date: Date = new Date()) => {

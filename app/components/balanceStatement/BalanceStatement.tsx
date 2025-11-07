@@ -6,7 +6,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "../ui/card";
 
 import {
   Table,
@@ -15,13 +15,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
+} from "../ui/table";
 
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 
 // ✅ reusable component
-import { DateRangeFilter } from "../components/ui/DateRangeFilter";
+import { DateRangeFilter } from "../ui/DateRangeFilter";
 
 interface CurrencyBalance {
   currencyType: string;

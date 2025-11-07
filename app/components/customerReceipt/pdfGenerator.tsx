@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { toast } from "../hooks/use-toast";
+import { toast } from "../../hooks/use-toast";
 
 export interface CurrencyRow {
   id: string;

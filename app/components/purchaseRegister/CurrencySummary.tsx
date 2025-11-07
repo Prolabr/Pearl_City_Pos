@@ -5,7 +5,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "../ui/card";
 
 interface CurrencyDetail {
   currencyType: string;
