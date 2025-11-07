@@ -34,6 +34,14 @@ interface CurrencyBalance {
   closingBalance: string;
 }
 
+interface DepositRecord {
+  id: string;
+  currencyType: string;
+  amount: number;
+  date: Date;
+  createdAt: Date;
+}
+
 export default function BalanceStatement() {
   const [fromDate, setFromDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -43,6 +51,8 @@ export default function BalanceStatement() {
   const [balances, setBalances] = useState<CurrencyBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [depositInputs, setDepositInputs] = useState<Record<string, string>>({});
+  const [depositRecords, setDepositRecords] = useState<Record<string, DepositRecord[]>>({});
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("");
 
   // ✅ Fetch balance data
   const fetchBalanceData = async () => {
@@ -56,6 +66,7 @@ export default function BalanceStatement() {
       if (!res.ok) throw new Error("Failed to fetch balance data");
 
       const response = await res.json();
+      console.log("Fetched data:", response);
 
       const data: CurrencyBalance[] = Array.isArray(response)
         ? response
@@ -66,6 +77,25 @@ export default function BalanceStatement() {
       console.error("Error fetching balances:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Fetch deposit records for a specific currency
+  const fetchDepositRecords = async (currencyType: string) => {
+    try {
+      const res = await fetch(
+        `/api/balance-statement/deposits?currency=${currencyType}&date=${toDate}`
+      );
+
+      if (!res.ok) throw new Error("Failed to fetch deposit records");
+
+      const deposits: DepositRecord[] = await res.json();
+      setDepositRecords(prev => ({
+        ...prev,
+        [currencyType]: deposits
+      }));
+    } catch (err) {
+      console.error("Error fetching deposit records:", err);
     }
   };
 
@@ -85,15 +115,29 @@ export default function BalanceStatement() {
     fetchBalanceData();
   }, []);
 
-  const handleDepositInput = (currency: string, value: string) => {
+  // ✅ Fetch deposit records when balances change
+  useEffect(() => {
+    visibleBalances.forEach(balance => {
+      if (parseFloat(balance.deposits || "0") > 0) {
+        fetchDepositRecords(balance.currencyType);
+      }
+    });
+  }, [balances]);
+
+  const handleDepositInput = (value: string) => {
     setDepositInputs((prev) => ({
       ...prev,
-      [currency]: value,
+      [selectedCurrency]: value,
     }));
   };
 
-  const handleSaveDeposit = async (currencyType: string) => {
-    const amountStr = depositInputs[currencyType] || "";
+  const handleSaveDeposit = async () => {
+    if (!selectedCurrency) {
+      console.error("No currency selected");
+      return;
+    }
+
+    const amountStr = depositInputs[selectedCurrency] || "";
     const amount = parseFloat(amountStr);
 
     if (isNaN(amount) || amount <= 0) {
@@ -106,7 +150,7 @@ export default function BalanceStatement() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currencyType,
+          currencyType: selectedCurrency,
           date: toDate,
           amount,
         }),
@@ -117,13 +161,25 @@ export default function BalanceStatement() {
         return;
       }
 
-      setDepositInputs((prev) => ({ ...prev, [currencyType]: "" }));
+      setDepositInputs((prev) => ({ ...prev, [selectedCurrency]: "" }));
+      setSelectedCurrency("");
 
+      // Refresh data and deposit records
       await fetchBalanceData();
+      await fetchDepositRecords(selectedCurrency);
     } catch (err) {
       console.error("Error saving deposit:", err);
     }
   };
+
+  // ✅ Calculate total deposits for a currency
+  const getTotalDeposits = (currencyType: string): number => {
+    const balance = balances.find(b => b.currencyType === currencyType);
+    return balance ? parseFloat(balance.deposits || "0") : 0;
+  };
+
+  // ✅ Get available currencies for deposit
+  const availableCurrencies = visibleBalances.map(balance => balance.currencyType);
 
   return (
     <Card className="shadow-[var(--shadow-medium)]">
@@ -144,6 +200,83 @@ export default function BalanceStatement() {
           onFilter={fetchBalanceData}
         />
 
+        {/* ✅ Deposit Input Section - Outside the Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Add Deposit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Select Currency
+                  </label>
+                  <select
+                    value={selectedCurrency}
+                    onChange={(e) => setSelectedCurrency(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="">Choose currency</option>
+                    {availableCurrencies.map(currency => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Deposit Amount
+                  </label>
+                  <Input
+                    type="number"
+                    value={selectedCurrency ? (depositInputs[selectedCurrency] || "") : ""}
+                    onChange={(e) => handleDepositInput(e.target.value)}
+                    className="text-right font-mono"
+                    placeholder="0.00"
+                    disabled={!selectedCurrency}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                variant="default"
+                onClick={handleSaveDeposit}
+                disabled={!selectedCurrency || !depositInputs[selectedCurrency]}
+              >
+                Add Deposit
+              </Button>
+            </div>
+
+            {/* ✅ Recent Deposits Preview */}
+            {/* {selectedCurrency && depositRecords[selectedCurrency] && depositRecords[selectedCurrency].length > 0 && (
+              <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                <h4 className="text-sm font-semibold mb-2">
+                  Recent deposits for {selectedCurrency}
+                </h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {depositRecords[selectedCurrency].map((deposit) => (
+                    <div
+                      key={deposit.id}
+                      className="flex justify-between items-center p-2 bg-background rounded border text-sm"
+                    >
+                      <span className="font-mono">
+                        {deposit.amount.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(deposit.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )} */}
+          </CardContent>
+        </Card>
+
+        {/* ✅ Balance Table */}
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -162,7 +295,7 @@ export default function BalanceStatement() {
 
               <TableBody>
                 {visibleBalances.map((balance, index) => (
-                  <TableRow key={index} className="hover:bg-muted/30">
+                  <TableRow key={balance.currencyType || index} className="hover:bg-muted/30">
                     <TableCell className="font-semibold">
                       <span className="px-2 py-1 bg-primary/10 text-primary rounded text-sm">
                         {balance.currencyType}
@@ -175,25 +308,13 @@ export default function BalanceStatement() {
                     <TableCell className="text-right font-mono text-destructive">{balance.exchangeSell}</TableCell>
                     <TableCell className="text-right font-mono text-destructive">{balance.sales}</TableCell>
 
-                    {/* ✅ Deposit + Save */}
+                    {/* ✅ Deposit Column - Only shows total amount */}
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2 w-full">
-                        <Input
-                          type="number"
-                          value={depositInputs[balance.currencyType] || ""}
-                          onChange={(e) =>
-                            handleDepositInput(balance.currencyType, e.target.value)
-                          }
-                          className="text-right font-mono w-24"
-                        />
-
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleSaveDeposit(balance.currencyType)}
-                        >
-                          Save
-                        </Button>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono text-lg font-semibold">
+                          {getTotalDeposits(balance.currencyType).toFixed(2)}
+                        </span>
+                  
                       </div>
                     </TableCell>
 
@@ -203,7 +324,6 @@ export default function BalanceStatement() {
                   </TableRow>
                 ))}
               </TableBody>
-
             </Table>
           </div>
         </div>
@@ -222,4 +342,10 @@ export default function BalanceStatement() {
       </CardContent>
     </Card>
   );
+
+  // ✅ Check if currency has deposits
+  function hasDeposits(currencyType: string): boolean {
+    const records = depositRecords[currencyType];
+    return records && records.length > 0;
+  }
 }
