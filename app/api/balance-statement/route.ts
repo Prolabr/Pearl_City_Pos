@@ -1,21 +1,20 @@
-// app/api/balance-statement/route.ts
+// app/api/balance-statement/route.ts - COMPLETE FIX
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "../../libs/prisma"; 
 
+const CURRENCIES = ["USD","GBP","EUR","CHF","AUD","NZD","SGD","INR","CAD"];
 
-// List of the 9 currencies accepted by the app
-const CURRENCIES = [
-  "USD",
-  "GBP",
-  "EUR",
-  "CHF",
-  "AUD",
-  "NZD",
-  "SGD",
-  "INR",
-  "CAD",
-];
+type CurrencyBalance = {
+  currencyType: string;
+  openingBalance: string;
+  purchases: string;
+  exchangeBuy: string;
+  exchangeSell: string;
+  sales: string;
+  deposits: string;
+  closingBalance: string;
+};
 
 
 export async function POST(req: NextRequest) {
@@ -30,77 +29,185 @@ export async function POST(req: NextRequest) {
 
     const from = new Date(fromDateParam);
     const to = new Date(toDateParam);
-    // Make the `to` inclusive to the end of that day
     to.setHours(23, 59, 59, 999);
 
-    // Helper to safely convert Prisma Decimal | null -> number
-    const decimalToNumber = (val: any) => {
-      if (val === null || val === undefined) return 0;
-      // Prisma returns Decimal which usually has .toNumber() or .toString()
-      if (typeof val.toNumber === "function") return val.toNumber();
-      if (typeof val.toString === "function") return parseFloat(val.toString());
-      return Number(val);
-    };
+    const results: CurrencyBalance[] = [];
 
-    const results: Array<Record<string, string>> = [];
-
-    // For each supported currency compute sums
     for (const currency of CURRENCIES) {
-      // Sum of ALL previous transactions (before `from`) -> opening balance
-      const openingAgg = await prisma.customerReceiptCurrency.aggregate({
-        _sum: {
-          amountFcy: true,
-        },
+      // Get daily balance data for the date range
+      const dailyBalances = await prisma.dailyCurrencyBalance.findMany({
         where: {
           currencyType: currency,
-          receipt: {
-            receiptDate: { lt: from },
+          date: {
+            gte: from,
+            lte: to,
           },
         },
+        orderBy: { date: "asc" },
       });
 
-      // Sum of transactions inside the requested range -> purchases
-      const purchasesAgg = await prisma.customerReceiptCurrency.aggregate({
-        _sum: {
-          amountFcy: true,
-        },
-        where: {
+      // If we have daily balance records for the exact date range
+      if (dailyBalances.length > 0) {
+        // Use the daily records directly
+        const totals = dailyBalances.reduce((acc, day) => ({
+          purchases: acc.purchases + Number(day.purchases || 0),
+          exchangeBuy: acc.exchangeBuy + Number(day.exchangeBuy || 0),
+          exchangeSell: acc.exchangeSell + Number(day.exchangeSell || 0),
+          sales: acc.sales + Number(day.sales || 0),
+          deposits: acc.deposits + Number(day.deposits || 0),
+        }), {
+          purchases: 0,
+          exchangeBuy: 0,
+          exchangeSell: 0,
+          sales: 0,
+          deposits: 0,
+        });
+
+        const firstDay = dailyBalances[0];
+        const lastDay = dailyBalances[dailyBalances.length - 1];
+
+        results.push({
           currencyType: currency,
-          receipt: {
-            receiptDate: { gte: from, lte: to },
+          openingBalance: Number(firstDay.openingBalance || 0).toFixed(2),
+          purchases: totals.purchases.toFixed(2),
+          exchangeBuy: totals.exchangeBuy.toFixed(2),
+          exchangeSell: totals.exchangeSell.toFixed(2),
+          sales: totals.sales.toFixed(2),
+          deposits: totals.deposits.toFixed(2),
+          closingBalance: Number(lastDay.closingBalance || 0).toFixed(2),
+        });
+      } else {
+        // ✅ FIXED: If no daily records exist, we need to calculate properly
+        // Find the most recent daily balance before the fromDate to get opening
+        const previousDay = new Date(from);
+        previousDay.setDate(previousDay.getDate() - 1);
+        
+        const previousBalance = await prisma.dailyCurrencyBalance.findFirst({
+          where: {
+            currencyType: currency,
+            date: {
+              lte: previousDay,
+            },
           },
-        },
-      });
+          orderBy: { date: 'desc' },
+        });
 
-      // NOTE: at the moment other fields (exchangeBuy, exchangeSell, sales, deposits)
-      // are not represented in the CustomerReceipt model. We set them to 0 here.
-      // In future you can replace these with aggregates from their respective tables
-      // (purchase register, exchange transactions, sales register, deposit register).
+        // Calculate opening balance from previous day's closing
+        const openingBalance = previousBalance ? Number(previousBalance.closingBalance) : 0;
 
-      const opening = decimalToNumber(openingAgg._sum.amountFcy);
-      const purchases = decimalToNumber(purchasesAgg._sum.amountFcy);
-      const exchangeBuy = 0;
-      const exchangeSell = 0;
-      const sales = 0;
-      const deposits = 0;
+        // Calculate purchases for the date range
+        const purchasesAgg = await prisma.customerReceiptCurrency.aggregate({
+          _sum: { amountFcy: true },
+          where: {
+            currencyType: currency,
+            receipt: { receiptDate: { gte: from, lte: to } },
+          },
+        });
 
-      const closing = opening + purchases + exchangeBuy - exchangeSell - sales - deposits;
+        const purchases = purchasesAgg._sum.amountFcy ? Number(purchasesAgg._sum.amountFcy) : 0;
 
-      results.push({
-        currencyType: currency,
-        openingBalance: opening.toFixed(2),
-        purchases: purchases.toFixed(2),
-        exchangeBuy: exchangeBuy.toFixed(2),
-        exchangeSell: exchangeSell.toFixed(2),
-        sales: sales.toFixed(2),
-        deposits: deposits.toFixed(2),
-        closingBalance: closing.toFixed(2),
-      });
+        // Calculate deposits for the date range
+        const depositsAgg = await prisma.depositRecord.aggregate({
+          _sum: { amount: true },
+          where: {
+            currencyType: currency,
+            date: { gte: from, lte: to },
+          },
+        });
+
+        const deposits = depositsAgg._sum.amount ? Number(depositsAgg._sum.amount) : 0;
+
+        const exchangeBuy = 0;
+        const exchangeSell = 0;
+        const sales = 0;
+
+        const closingBalance = openingBalance + purchases + exchangeBuy - exchangeSell - sales - deposits;
+
+        results.push({
+          currencyType: currency,
+          openingBalance: openingBalance.toFixed(2),
+          purchases: purchases.toFixed(2),
+          exchangeBuy: exchangeBuy.toFixed(2),
+          exchangeSell: exchangeSell.toFixed(2),
+          sales: sales.toFixed(2),
+          deposits: deposits.toFixed(2),
+          closingBalance: closingBalance.toFixed(2),
+        });
+
+        // ✅ AUTO-CREATE the daily record for future use
+        // Create daily records for each day in the range
+        let currentDate = new Date(from);
+        let currentOpening = openingBalance;
+        
+        while (currentDate <= to) {
+          const dayStart = new Date(currentDate);
+          const dayEnd = new Date(currentDate);
+          dayEnd.setHours(23, 59, 59, 999);
+
+          // Calculate day-specific transactions
+          const dayPurchasesAgg = await prisma.customerReceiptCurrency.aggregate({
+            _sum: { amountFcy: true },
+            where: {
+              currencyType: currency,
+              receipt: { 
+                receiptDate: { 
+                  gte: dayStart, 
+                  lte: dayEnd 
+                } 
+              },
+            },
+          });
+
+          const dayDepositsAgg = await prisma.depositRecord.aggregate({
+            _sum: { amount: true },
+            where: {
+              currencyType: currency,
+              date: { gte: dayStart, lte: dayEnd },
+            },
+          });
+
+          const dayPurchases = dayPurchasesAgg._sum.amountFcy ? Number(dayPurchasesAgg._sum.amountFcy) : 0;
+          const dayDeposits = dayDepositsAgg._sum.amount ? Number(dayDepositsAgg._sum.amount) : 0;
+
+          const dayClosing = currentOpening + dayPurchases - dayDeposits;
+
+          // Create or update daily record
+          await prisma.dailyCurrencyBalance.upsert({
+            where: {
+              currencyType_date: {
+                currencyType: currency,
+                date: currentDate,
+              },
+            },
+            update: {
+              openingBalance: currentOpening,
+              purchases: dayPurchases,
+              deposits: dayDeposits,
+              closingBalance: dayClosing,
+            },
+            create: {
+              currencyType: currency,
+              date: currentDate,
+              openingBalance: currentOpening,
+              purchases: dayPurchases,
+              exchangeBuy: 0,
+              exchangeSell: 0,
+              sales: 0,
+              deposits: dayDeposits,
+              closingBalance: dayClosing,
+            },
+          });
+
+          // Move to next day
+          currentOpening = dayClosing;
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
     }
 
     return NextResponse.json(results);
-  } catch (error) {
-    console.error("balance-statement error:", error);
+  } catch (err) {
+    console.error("balance-statement error:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

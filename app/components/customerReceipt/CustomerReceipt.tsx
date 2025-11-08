@@ -1,22 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
+} from "../ui/select";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "../ui/card";
 import {
   Table,
   TableBody,
@@ -24,13 +24,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
-import { toast } from "../hooks/use-toast";
+} from "../ui/table";
+import { toast } from "../../hooks/use-toast";
 import { Plus, Trash2, Save, Download } from "lucide-react";
-import { generatePDF,PDFData } from "../components/pdfGenerator";
-import { blacklistedCustomers } from "../libs/blacklist";
+import { generatePDF, PDFData } from "./pdfGenerator";
+import { blacklistedCustomers } from "../../libs/blacklist";
 import Link from "next/link";
+import { toDayDate } from "../../libs/day";
 
+// Helper to get Sri Lanka date string YYYY-MM-DD
+const getSriLankaDateString = (date: Date = new Date()) => {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+};
+
+// Convert UTC string to Sri Lanka local datetime string
+const formatSriLankaDateTime = (utcString: string) => {
+  return new Date(utcString).toLocaleString("en-LK", { timeZone: "Asia/Colombo" });
+};
 
 export interface CurrencyRow {
   id: string;
@@ -40,7 +50,7 @@ export interface CurrencyRow {
   amountIssued: string;
 }
 
-interface SavedPDF { 
+interface SavedPDF {
   id: string;
   fileName: string;
   filePath: string;
@@ -49,13 +59,19 @@ interface SavedPDF {
 
 export const CustomerReceipt = () => {
   const [serialNo, setSerialNo] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getSriLankaDateString());
   const [customerName, setCustomerName] = useState("");
   const [nicPassport, setNicPassport] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [otherSource, setOtherSource] = useState("");
   const [rows, setRows] = useState<CurrencyRow[]>([
-    { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
+    {
+      id: Date.now().toString(),
+      currencyType: "",
+      amountReceived: "",
+      rate: "",
+      amountIssued: "",
+    },
   ]);
   const [recentPDFs, setRecentPDFs] = useState<SavedPDF[]>([]);
 
@@ -66,9 +82,16 @@ export const CustomerReceipt = () => {
       const data = await res.json();
       if (res.ok) {
         // Sort by newest first
-        setRecentPDFs(data.pdfs.sort((a: SavedPDF, b: SavedPDF) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ));
+        const formattedPDFs = data.pdfs.map((pdf: SavedPDF) => ({
+          ...pdf,
+          createdAt: formatSriLankaDateTime(pdf.createdAt),
+        }));
+      setRecentPDFs(
+          formattedPDFs.sort(
+            (a: SavedPDF, b: SavedPDF) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
       } else {
         throw new Error(data.error);
       }
@@ -78,17 +101,35 @@ export const CustomerReceipt = () => {
     }
   };
 
+const loadSerial = async () => {
+    try {
+      const res = await fetch("/api/customer-receipt/next-serial");
+      const data = await res.json();
+      if (res.ok) setSerialNo(data.nextSerial);
+      else console.error(data.error);
+    } catch (err) {
+      console.error("Failed to load serial:", err);
+    }
+  };
+  
+
   // Fetch PDFs on initial load
   useEffect(() => {
     fetchRecentPDFs();
+    loadSerial();
   }, []);
-
 
   // Add a new row
   const addRow = () => {
     setRows([
       ...rows,
-      { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
+      {
+        id: Date.now().toString(),
+        currencyType: "",
+        amountReceived: "",
+        rate: "",
+        amountIssued: "",
+      },
     ]);
   };
 
@@ -136,23 +177,29 @@ export const CustomerReceipt = () => {
     }
 
     // Blacklisted customer check
-    const isBlackListed = blacklistedCustomers.some((entry)=>{
-      return (
-      (entry.nic && entry.nic === nicPassport) || // check NIC
-      (entry.passport && entry.passport === nicPassport) || // check Passport
-      (entry.name && entry.name.toLowerCase() === customerName.toLowerCase()) // optional name check
-    );
-    })
+    const customerInput = nicPassport.trim().toUpperCase();
+    const nameInput = customerName.trim().toLowerCase();
+
+    const isBlackListed = blacklistedCustomers.some((entry) => {
+      const nicMatches = entry.nic?.some(
+        (n) => n.toUpperCase() === customerInput
+      );
+      const passportMatches = entry.passport?.some(
+        (p) => p.toUpperCase() === customerInput
+      );
+      const nameMatches = entry.name.toLowerCase() === nameInput;
+
+      return nicMatches || passportMatches || nameMatches;
+    });
 
     if (isBlackListed) {
-    toast({
-      title: "Blacklisted Customer",
-      description: "Receipt cannot be issued to this customer.",
-      variant: "destructive",
-    });
-    return; 
-  }
-
+      toast({
+        title: "Blacklisted Customer",
+        description: "Receipt cannot be issued to this customer.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const saveRes = await fetch("/api/customer-receipt", {
@@ -160,7 +207,7 @@ export const CustomerReceipt = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serialNo,
-          date,
+          date: toDayDate(date).toISOString(),
           customerName,
           nicPassport,
           sources,
@@ -173,13 +220,12 @@ export const CustomerReceipt = () => {
       if (!saveRes.ok) throw new Error(saveData.error);
 
       const newReceipt = saveData.receipt;
-      const receiptId = newReceipt.id; // Get the ID of the new receipt
+      const receiptId = newReceipt.id; 
       const receiptSerial = newReceipt.serialNumber;
-      
+
       toast({ title: "Receipt Saved", description: saveData.message });
 
-
-     // 2. Generate PDF Base64 string for server storage
+      // 2. Generate PDF Base64 string for server storage
       const pdfData: PDFData = {
         serialNo: newReceipt.serialNumber,
         date: newReceipt.receiptDate.split("T")[0], // Use the date from the server
@@ -198,10 +244,10 @@ export const CustomerReceipt = () => {
       };
 
       // Generate PDF Base64 for the server
-      const pdfBase64 = generatePDF(pdfData); 
+      const pdfBase64 = generatePDF(pdfData);
       const fileName = `Receipt-${receiptSerial}.pdf`;
 
-if (pdfBase64) {
+      if (pdfBase64) {
         // 3. Save PDF to server and DB
         const savePdfRes = await fetch("/api/customer-receipt/save-pdf", {
           method: "POST",
@@ -215,14 +261,14 @@ if (pdfBase64) {
 
         const savePdfData = await savePdfRes.json();
         if (!savePdfRes.ok) throw new Error(savePdfData.error);
-        
+
         // 4. Client-side download (Uses the old function logic for immediate download)
         generatePDF(pdfData, true); // Call generatePDF again, forcing client download
-        
+
         // 5. Update the list of recent PDFs
-        fetchRecentPDFs(); 
+        fetchRecentPDFs();
       }
-      
+
       // 6. Reset form after save + PDF (Same as before)
       setSerialNo("");
       setCustomerName("");
@@ -230,16 +276,23 @@ if (pdfBase64) {
       setSources([]);
       setOtherSource("");
       setRows([
-        { id: Date.now().toString(), currencyType: "", amountReceived: "", rate: "", amountIssued: "" },
+        {
+          id: Date.now().toString(),
+          currencyType: "",
+          amountReceived: "",
+          rate: "",
+          amountIssued: "",
+        },
       ]);
-      
     } catch (err: any) {
       // Improved error handling to show both save and PDF errors
-      const errorMsg = err.message.startsWith("Failed to fetch") ? "Could not connect to server" : err.message;
-      toast({ 
-        title: "Error", 
-        description: `Failed to process receipt: ${errorMsg}`, 
-        variant: "destructive" 
+      const errorMsg = err.message.startsWith("Failed to fetch")
+        ? "Could not connect to server"
+        : err.message;
+      toast({
+        title: "Error",
+        description: `Failed to process receipt: ${errorMsg}`,
+        variant: "destructive",
       });
     }
   };
@@ -256,7 +309,12 @@ if (pdfBase64) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="permitNo">Permit No: DFE/RD/6000</Label>
-            <Input id="permitNo" value="DFE/RD/6000" disabled className="bg-muted" />
+            <Input
+              id="permitNo"
+              value="DFE/RD/6000"
+              disabled
+              className="bg-muted"
+            />
           </div>
 
           <div className="space-y-2">
@@ -264,6 +322,7 @@ if (pdfBase64) {
             <Input
               id="serialNo"
               value={serialNo}
+              readOnly
               onChange={(e) => setSerialNo(e.target.value)}
               placeholder="Enter serial number"
             />
@@ -308,15 +367,35 @@ if (pdfBase64) {
           <div className="border border-gray-300 rounded-lg divide-y divide-gray-300">
             {(
               [
-                { key: "Persons return for vacation from foreign employment", label: "a) Persons return for vacation from foreign employment" },
-                { key: "Relatives of those employees abroad", label: "b) Relatives of those employees abroad" },
-                { key: "Foreign tourists (directly or through tour guides)", label: "c) Foreign tourists (directly or through tour guides)" },
-                { key: "d) Unutilized foreign currency obtained for travel purpose by residents", label: "d) Unutilized foreign currency obtained for travel purpose by residents" },
+                {
+                  key: "Persons return for vacation from foreign employment",
+                  label:
+                    "a) Persons return for vacation from foreign employment",
+                },
+                {
+                  key: "Relatives of those employees abroad",
+                  label: "b) Relatives of those employees abroad",
+                },
+                {
+                  key: "Foreign tourists (directly or through tour guides)",
+                  label:
+                    "c) Foreign tourists (directly or through tour guides)",
+                },
+                {
+                  key: "d) Unutilized foreign currency obtained for travel purpose by residents",
+                  label:
+                    "d) Unutilized foreign currency obtained for travel purpose by residents",
+                },
                 { key: "Other", label: "e) Other" },
               ] as const
             ).map((item) => (
-              <label key={item.key} className="flex justify-between items-center px-3 py-2">
-                <span className="text-gray-800 text-sm md:text-base">{item.label}</span>
+              <label
+                key={item.key}
+                className="flex justify-between items-center px-3 py-2"
+              >
+                <span className="text-gray-800 text-sm md:text-base">
+                  {item.label}
+                </span>
                 {item.key === "Other" && (
                   <div className="flex items-center gap-2">
                     <Input
@@ -330,7 +409,9 @@ if (pdfBase64) {
                         if (!sources.includes("other")) toggleSource("other");
                       }}
                     />
-                    <span className="text-xs text-gray-500">If other specify</span>
+                    <span className="text-xs text-gray-500">
+                      If other specify
+                    </span>
                   </div>
                 )}
                 <input
@@ -371,14 +452,28 @@ if (pdfBase64) {
                     <TableCell>
                       <Select
                         value={row.currencyType}
-                        onValueChange={(value) => updateRow(row.id, "currencyType", value)}
+                        onValueChange={(value) =>
+                          updateRow(row.id, "currencyType", value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          {["USD", "GBP", "EUR", "CHF", "AUD", "NZD", "SGD", "INR", "CAD"].map((cur) => (
-                            <SelectItem key={cur} value={cur}>{cur}</SelectItem>
+                          {[
+                            "USD",
+                            "GBP",
+                            "EUR",
+                            "CHF",
+                            "AUD",
+                            "NZD",
+                            "SGD",
+                            "INR",
+                            "CAD",
+                          ].map((cur) => (
+                            <SelectItem key={cur} value={cur}>
+                              {cur}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -389,7 +484,9 @@ if (pdfBase64) {
                         type="number"
                         step="0.01"
                         value={row.amountReceived}
-                        onChange={(e) => updateRow(row.id, "amountReceived", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "amountReceived", e.target.value)
+                        }
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -399,7 +496,9 @@ if (pdfBase64) {
                         type="number"
                         step="0.01"
                         value={row.rate}
-                        onChange={(e) => updateRow(row.id, "rate", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "rate", e.target.value)
+                        }
                         placeholder="0.00"
                       />
                     </TableCell>
@@ -445,35 +544,41 @@ if (pdfBase64) {
         </div>
 
         <div className="space-y-4 pt-8">
-            <h2 className="text-xl font-bold">Issued Receipts in past 7 days</h2>
-            {recentPDFs.length === 0 ? (
-                <p className="text-sm text-gray-500">No recent PDFs found on the server.</p>
-            ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>File Name</TableHead>
-                            <TableHead>Date Created</TableHead>
-                            <TableHead className="w-20">Download</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {recentPDFs.map((pdf) => (
-                            <TableRow key={pdf.id}>
-                                <TableCell className="font-medium">{pdf.fileName}</TableCell>
-                                <TableCell>{new Date(pdf.createdAt).toLocaleString()}</TableCell>
-                                <TableCell>
-                                    <Link href={pdf.filePath} passHref target="_blank">
-                                        <Button variant="ghost" size="icon">
-                                            <Download className="h-4 w-4 text-primary" />
-                                        </Button>
-                                    </Link>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
+          <h2 className="text-xl font-bold">Issued Receipts in past 7 days</h2>
+          {recentPDFs.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No recent PDFs found on the server.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>File Name</TableHead>
+                  <TableHead>Date Created</TableHead>
+                  <TableHead className="w-20">Download</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentPDFs.map((pdf) => (
+                  <TableRow key={pdf.id}>
+                    <TableCell className="font-medium">
+                      {pdf.fileName}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(pdf.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={pdf.filePath} passHref target="_blank">
+                        <Button variant="ghost" size="icon">
+                          <Download className="h-4 w-4 text-primary" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </CardContent>
     </Card>

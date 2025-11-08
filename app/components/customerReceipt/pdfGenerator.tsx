@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { toast } from "../hooks/use-toast";
+import { toast } from "../../hooks/use-toast";
 
 export interface CurrencyRow {
   id: string;
@@ -50,6 +50,10 @@ export const generatePDF = ({
   let currentY = 15;
   const boxHeight = 7;
 
+  const logoImg = new Image();
+  logoImg.src = "/logo.png";
+  doc.addImage(logoImg, "PNG", 15, 10, 55, 55);
+  
   // --- Header Section ---
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -80,7 +84,7 @@ export const generatePDF = ({
     currentY,
     { align: "center" }
   );
-  currentY += 12;
+  currentY += 25;
 
   // --- Permit, Serial, Date ---
   const lineY = currentY - 5;
@@ -152,7 +156,7 @@ export const generatePDF = ({
   const checkboxX = pageWidth - margin - 8;
   const checkboxSize = 5;
   const otherBoxWidth = 50;
-  const otherBoxX = checkboxX - otherBoxWidth - 2;
+  
 
   doc.setFont("helvetica", "normal");
   sourcesText.forEach((src) => {
@@ -167,7 +171,7 @@ export const generatePDF = ({
       doc.setFontSize(10);
     }
 
-    if (src.key === "other") {
+    if (src.key === "Other") {
       doc.rect(labelX + 15, currentY - 4, otherBoxWidth, checkboxSize);
       doc.text(otherSource, labelX + 17, currentY - 1);
 
@@ -210,7 +214,7 @@ export const generatePDF = ({
   });
 
   let finalY = (doc as any).lastAutoTable.finalY;
-  currentY = finalY + 12;
+  currentY = finalY + 30;
 
   // --- Signature Sections ---
   doc.setFont("helvetica", "normal");
