@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "db:generate": "dotenv -e .env npx prisma generate",
     "db:migrate": "dotenv -e .env npx prisma migrate dev",
     "db:push": "dotenv -e .env npx prisma db push",
@@ -28,6 +28,7 @@
     "lucide-react": "^0.548.0",
     "next": "15.5.6",
     "next-auth": "^4.24.13",
+    "node-cron": "^4.2.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.3.1",
@@ -36,7 +37,11 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -44,9 +49,12 @@
     "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
+    "jest": "^30.2.0",
     "postcss": "^8.5.6",
     "prisma": "^6.18.0",
+    "supertest": "^7.1.4",
     "tailwindcss": "^3.4.18",
+    "ts-jest": "^29.4.5",
     "typescript": "^5"
   }
 }
