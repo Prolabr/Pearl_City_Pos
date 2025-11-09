@@ -11,12 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Table,
   TableBody,
@@ -31,6 +26,7 @@ import { generatePDF, PDFData } from "./pdfGenerator";
 import { blacklistedCustomers } from "../../libs/blacklist";
 import Link from "next/link";
 import { toDayDate } from "../../libs/day";
+import { cleanupOldPDFs } from "../../libs/cleanUpPDFs";
 
 // Helper to get Sri Lanka date string YYYY-MM-DD
 const getSriLankaDateString = (date: Date = new Date()) => {
@@ -39,7 +35,9 @@ const getSriLankaDateString = (date: Date = new Date()) => {
 
 // Convert UTC string to Sri Lanka local datetime string
 const formatSriLankaDateTime = (utcString: string) => {
-  return new Date(utcString).toLocaleString("en-LK", { timeZone: "Asia/Colombo" });
+  return new Date(utcString).toLocaleString("en-LK", {
+    timeZone: "Asia/Colombo",
+  });
 };
 
 export interface CurrencyRow {
@@ -74,6 +72,7 @@ export const CustomerReceipt = () => {
     },
   ]);
   const [recentPDFs, setRecentPDFs] = useState<SavedPDF[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Function to fetch recent PDFs
   const fetchRecentPDFs = async () => {
@@ -86,7 +85,7 @@ export const CustomerReceipt = () => {
           ...pdf,
           createdAt: formatSriLankaDateTime(pdf.createdAt),
         }));
-      setRecentPDFs(
+        setRecentPDFs(
           formattedPDFs.sort(
             (a: SavedPDF, b: SavedPDF) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -101,7 +100,7 @@ export const CustomerReceipt = () => {
     }
   };
 
-const loadSerial = async () => {
+  const loadSerial = async () => {
     try {
       const res = await fetch("/api/customer-receipt/next-serial");
       const data = await res.json();
@@ -111,7 +110,6 @@ const loadSerial = async () => {
       console.error("Failed to load serial:", err);
     }
   };
-  
 
   // Fetch PDFs on initial load
   useEffect(() => {
@@ -220,7 +218,7 @@ const loadSerial = async () => {
       if (!saveRes.ok) throw new Error(saveData.error);
 
       const newReceipt = saveData.receipt;
-      const receiptId = newReceipt.id; 
+      const receiptId = newReceipt.id;
       const receiptSerial = newReceipt.serialNumber;
 
       toast({ title: "Receipt Saved", description: saveData.message });
@@ -292,6 +290,28 @@ const loadSerial = async () => {
       toast({
         title: "Error",
         description: `Failed to process receipt: ${errorMsg}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // delete records from server
+  const handleDeleteAllPDFs = async () => {
+    if (!confirm("Are you sure you want to delete all PDFs?")) return;
+
+    try {
+      const res = await fetch("/api/customer-receipt/delete-all-pdfs", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      toast({ title: "Deleted", description: data.message });
+      fetchRecentPDFs(); // refresh PDF list in UI
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
         variant: "destructive",
       });
     }
@@ -544,7 +564,23 @@ const loadSerial = async () => {
         </div>
 
         <div className="space-y-4 pt-8">
-          <h2 className="text-xl font-bold">Issued Receipts in past 7 days</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">
+              Issued Receipts in past 7 days
+            </h2>
+            {recentPDFs.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAllPDFs}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All
+              </Button>
+            )}
+          </div>
+
           {recentPDFs.length === 0 ? (
             <p className="text-sm text-gray-500">
               No recent PDFs found on the server.
