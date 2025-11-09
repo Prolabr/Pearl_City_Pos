@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/libs/prisma"; // Adjust path to your prisma client
+import { prisma } from "@/app/libs/prisma"; 
 
 const SEVEN_DAYS_AGO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
 export async function GET() {
   try {
-    // Fetch all PDFs created within the last 7 days
+   
     const recentPDFs = await prisma.receiptPDF.findMany({
       where: {
         createdAt: {
