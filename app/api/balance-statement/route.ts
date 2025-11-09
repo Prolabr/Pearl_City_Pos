@@ -1,7 +1,6 @@
 // app/api/balance-statement/route.ts - COMPLETE FIX
 import { NextRequest, NextResponse } from "next/server";
-
-import { prisma } from "../../libs/prisma"; 
+import { prisma } from "../../libs/prisma";
 
 const CURRENCIES = ["USD","GBP","EUR","CHF","AUD","NZD","SGD","INR","CAD"];
 
@@ -16,8 +15,7 @@ type CurrencyBalance = {
   closingBalance: string;
 };
 
-
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const fromDateParam = searchParams.get("fromDate");
