@@ -2,13 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Search } from "lucide-react";
 import { toast } from "../../hooks/use-toast";
 import { CurrencySummary } from "./CurrencySummary";
-import { DateRangeFilter } from "../../components/ui/DateRangeFilter"; 
+import { DateRangeFilter } from "../../components/ui/DateRangeFilter";
 
 interface CurrencyDetail {
   currencyType: string;
@@ -19,7 +26,7 @@ interface CurrencyDetail {
 
 interface PurchaseRecord {
   id: string;
-  date: string; 
+  date: string;
   serialNumber: string;
   customerName: string;
   nicPassport: string;
@@ -31,7 +38,9 @@ interface PurchaseRecord {
 export const PurchaseRegister = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
-  const [filteredPurchases, setFilteredPurchases] = useState<PurchaseRecord[]>([]);
+  const [filteredPurchases, setFilteredPurchases] = useState<PurchaseRecord[]>(
+    []
+  );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +50,7 @@ export const PurchaseRegister = () => {
       try {
         const res = await fetch("/api/purchase-register");
         console.log("Response status:", res.status);
-      
+
         if (!res.ok) {
           let errorMsg = `HTTP error ${res.status}`;
           try {
@@ -53,12 +62,16 @@ export const PurchaseRegister = () => {
 
         const text = await res.text();
         const data = text ? JSON.parse(text) : [];
-        
+
         setPurchases(data);
         setFilteredPurchases(data); // Initialize filtered purchases with all data
       } catch (err) {
         console.error(err);
-        toast({ title: "Error", description: "Failed to load purchases", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "Failed to load purchases",
+          variant: "destructive",
+        });
       }
     };
     fetchPurchases();
@@ -74,21 +87,26 @@ export const PurchaseRegister = () => {
 
     // Apply date range filter
     if (fromDate && toDate) {
-      filtered = filtered.filter(purchase => {
+      filtered = filtered.filter((purchase) => {
         const purchaseDate = new Date(purchase.date);
         const from = new Date(fromDate);
         const to = new Date(toDate);
-        
+
         return purchaseDate >= from && purchaseDate <= to;
       });
     }
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter((purchase) =>
-        purchase.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        purchase.nicPassport.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        purchase.serialNumber.includes(searchTerm)
+      filtered = filtered.filter(
+        (purchase) =>
+          purchase.customerName
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          purchase.nicPassport
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          purchase.serialNumber.includes(searchTerm)
       );
     }
 
@@ -107,7 +125,12 @@ export const PurchaseRegister = () => {
   };
 
   const totalAmountRs = filteredPurchases.reduce(
-    (sum, purchase) => sum + purchase.currencies.reduce((s, c) => s + parseFloat(c.amountIssuedLkr || "0"), 0),
+    (sum, purchase) =>
+      sum +
+      purchase.currencies.reduce(
+        (s, c) => s + parseFloat(c.amountIssuedLkr || "0"),
+        0
+      ),
     0
   );
 
@@ -119,8 +142,6 @@ export const PurchaseRegister = () => {
       </CardHeader>
 
       <CardContent className="pt-6 space-y-6">
-       
-
         {/* Search Bar */}
         <div className="space-y-2">
           <Label htmlFor="search">Search Transactions</Label>
@@ -140,22 +161,26 @@ export const PurchaseRegister = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
             <p className="text-sm text-muted-foreground">Total Transactions</p>
-            <p className="text-2xl font-bold text-primary">{filteredPurchases.length}</p>
+            <p className="text-2xl font-bold text-primary">
+              {filteredPurchases.length}
+            </p>
           </div>
           <div className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border border-accent/20">
             <p className="text-sm text-muted-foreground">Total Amount (LKR)</p>
-            <p className="text-2xl font-bold text-accent">{totalAmountRs.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-accent">
+              {totalAmountRs.toFixed(2)}
+            </p>
           </div>
-         
+
           <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20">
             <p className="text-sm text-muted-foreground">Today's Date</p>
-            <p className="text-2xl font-bold">{new Date().toLocaleDateString()}</p>
+            <p className="text-2xl font-bold">
+              {new Date().toLocaleDateString()}
+            </p>
           </div>
-
-          
         </div>
 
-         {/* Date Range Filter */}
+        {/* Date Range Filter */}
         <DateRangeFilter
           fromDate={fromDate}
           toDate={toDate}
@@ -164,8 +189,6 @@ export const PurchaseRegister = () => {
           onToChange={setToDate}
           onFilter={handleFilter}
         />
-
-      
 
         {/* Purchase Table */}
         <div className="border rounded-lg overflow-hidden">
@@ -189,16 +212,40 @@ export const PurchaseRegister = () => {
                 {filteredPurchases.length > 0 ? (
                   filteredPurchases.map((purchase) =>
                     purchase.currencies.map((currency, index) => (
-                      <TableRow key={`${purchase.id}-${currency.currencyType}`} className="hover:bg-muted/30">
+                      <TableRow
+                        key={`${purchase.id}-${currency.currencyType}`}
+                        className="hover:bg-muted/30"
+                      >
                         {index === 0 && (
                           <>
                             <TableCell rowSpan={purchase.currencies.length}>
                               {new Date(purchase.date).toLocaleDateString()}
                             </TableCell>
-                            <TableCell rowSpan={purchase.currencies.length}>{purchase.serialNumber}</TableCell>
-                            <TableCell rowSpan={purchase.currencies.length}>{purchase.customerName}</TableCell>
-                            <TableCell rowSpan={purchase.currencies.length}>{purchase.nicPassport}</TableCell>
-                            <TableCell rowSpan={purchase.currencies.length}>{purchase.sourceOfForeignCurrency.join(", ")}</TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>
+                              {purchase.serialNumber}
+                            </TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>
+                              {purchase.customerName}
+                            </TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>
+                              {purchase.nicPassport}
+                            </TableCell>
+                            <TableCell rowSpan={purchase.currencies.length}>
+                              {purchase.sourceOfForeignCurrency
+                                .map((src) => {
+                                  if (
+                                    src.toLowerCase() === "other" &&
+                                    purchase.remarks
+                                  ) {
+                                    // Replace "Other" with "Other (" + remarks + ")"
+                                    return `Other (${purchase.remarks})`;
+                                  }
+                                  return src;
+                                })
+                                // Avoid duplicates like "Other" and "other"
+                                .filter((v, i, a) => a.indexOf(v) === i)
+                                .join(", ")}
+                            </TableCell>
                           </>
                         )}
                         <TableCell>
@@ -206,18 +253,32 @@ export const PurchaseRegister = () => {
                             {currency.currencyType}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-mono">{currency.amountFcy}</TableCell>
-                        <TableCell className="text-right font-mono">{currency.rate}</TableCell>
-                        <TableCell className="text-right font-mono font-semibold">{currency.amountIssuedLkr}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {currency.amountFcy}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {currency.rate}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {currency.amountIssuedLkr}
+                        </TableCell>
                         {index === 0 && (
-                          <TableCell rowSpan={purchase.currencies.length} className="text-muted-foreground">{purchase.remarks}</TableCell>
+                          <TableCell
+                            rowSpan={purchase.currencies.length}
+                            className="text-muted-foreground"
+                          >
+                            {purchase.remarks}
+                          </TableCell>
                         )}
                       </TableRow>
                     ))
                   )
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell
+                      colSpan={10}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No transactions found
                     </TableCell>
                   </TableRow>
@@ -226,7 +287,7 @@ export const PurchaseRegister = () => {
             </Table>
           </div>
         </div>
-        <CurrencySummary purchases={filteredPurchases}/>
+        <CurrencySummary purchases={filteredPurchases} />
       </CardContent>
     </Card>
   );
