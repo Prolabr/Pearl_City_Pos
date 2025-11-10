@@ -38,19 +38,16 @@ interface PurchaseRecord {
 export const PurchaseRegister = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
-  const [filteredPurchases, setFilteredPurchases] = useState<PurchaseRecord[]>(
-    []
-  );
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [filteredPurchases, setFilteredPurchases] = useState<PurchaseRecord[]>([]);
+  const [fromDate, setFromDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [toDate, setToDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
 
+  // Fetch purchases on mount
   useEffect(() => {
     const fetchPurchases = async () => {
       try {
         const res = await fetch("/api/purchase-register");
-        console.log("Response status:", res.status);
-
         if (!res.ok) {
           let errorMsg = `HTTP error ${res.status}`;
           try {
@@ -61,10 +58,13 @@ export const PurchaseRegister = () => {
         }
 
         const text = await res.text();
-        const data = text ? JSON.parse(text) : [];
+        const data: PurchaseRecord[] = text ? JSON.parse(text) : [];
+
+        // Sort by serialNumber descending (latest first)
+        data.sort((a, b) => parseInt(b.serialNumber) - parseInt(a.serialNumber));
 
         setPurchases(data);
-        setFilteredPurchases(data); // Initialize filtered purchases with all data
+        setFilteredPurchases(data);
       } catch (err) {
         console.error(err);
         toast({
@@ -77,13 +77,26 @@ export const PurchaseRegister = () => {
     fetchPurchases();
   }, []);
 
-  // Apply filters when search term or date range changes
+  // Auto-apply search filter only (not date)
   useEffect(() => {
-    applyFilters();
-  }, [searchTerm, fromDate, toDate, purchases]);
+    const filtered = purchases.filter(
+      (purchase) =>
+        purchase.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        purchase.nicPassport.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        purchase.serialNumber.includes(searchTerm)
+    );
 
-  const applyFilters = () => {
-    let filtered = purchases;
+    // Sort by serialNumber descending
+    filtered.sort((a, b) => parseInt(b.serialNumber) - parseInt(a.serialNumber));
+
+    setFilteredPurchases(filtered);
+  }, [searchTerm, purchases]);
+
+  // Filter by date when clicking Filter button
+  const handleFilter = () => {
+    setLoading(true);
+
+    let filtered = [...purchases];
 
     // Apply date range filter
     if (fromDate && toDate) {
@@ -91,7 +104,6 @@ export const PurchaseRegister = () => {
         const purchaseDate = new Date(purchase.date);
         const from = new Date(fromDate);
         const to = new Date(toDate);
-
         return purchaseDate >= from && purchaseDate <= to;
       });
     }
@@ -100,28 +112,22 @@ export const PurchaseRegister = () => {
     if (searchTerm) {
       filtered = filtered.filter(
         (purchase) =>
-          purchase.customerName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          purchase.nicPassport
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
+          purchase.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          purchase.nicPassport.toLowerCase().includes(searchTerm.toLowerCase()) ||
           purchase.serialNumber.includes(searchTerm)
       );
     }
 
-    setFilteredPurchases(filtered);
-  };
+    // Sort by serialNumber descending
+    filtered.sort((a, b) => parseInt(b.serialNumber) - parseInt(a.serialNumber));
 
-  const handleFilter = () => {
-    setLoading(true);
-    // The filtering is already handled by useEffect, but we can add additional logic here if needed
-    setTimeout(() => setLoading(false), 300); // Simulate loading state
+    setFilteredPurchases(filtered);
+    setTimeout(() => setLoading(false), 300);
   };
 
   const clearDateFilters = () => {
-    setFromDate("");
-    setToDate("");
+    setFromDate(new Date().toISOString().split("T")[0]);
+    setToDate(new Date().toISOString().split("T")[0]);
   };
 
   const totalAmountRs = filteredPurchases.reduce(
@@ -161,22 +167,15 @@ export const PurchaseRegister = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
             <p className="text-sm text-muted-foreground">Total Transactions</p>
-            <p className="text-2xl font-bold text-primary">
-              {filteredPurchases.length}
-            </p>
+            <p className="text-2xl font-bold text-primary">{filteredPurchases.length}</p>
           </div>
           <div className="p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border border-accent/20">
             <p className="text-sm text-muted-foreground">Total Amount (LKR)</p>
-            <p className="text-2xl font-bold text-accent">
-              {totalAmountRs.toFixed(2)}
-            </p>
+            <p className="text-2xl font-bold text-accent">{totalAmountRs.toFixed(2)}</p>
           </div>
-
           <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20">
             <p className="text-sm text-muted-foreground">Today's Date</p>
-            <p className="text-2xl font-bold">
-              {new Date().toLocaleDateString()}
-            </p>
+            <p className="text-2xl font-bold">{new Date().toLocaleDateString()}</p>
           </div>
         </div>
 
@@ -233,16 +232,11 @@ export const PurchaseRegister = () => {
                             <TableCell rowSpan={purchase.currencies.length}>
                               {purchase.sourceOfForeignCurrency
                                 .map((src) => {
-                                  if (
-                                    src.toLowerCase() === "other" &&
-                                    purchase.remarks
-                                  ) {
-                                    // Replace "Other" with "Other (" + remarks + ")"
+                                  if (src.toLowerCase() === "other" && purchase.remarks) {
                                     return `Other (${purchase.remarks})`;
                                   }
                                   return src;
                                 })
-                                // Avoid duplicates like "Other" and "other"
                                 .filter((v, i, a) => a.indexOf(v) === i)
                                 .join(", ")}
                             </TableCell>
@@ -254,13 +248,13 @@ export const PurchaseRegister = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {currency.amountFcy}
+                          {parseFloat(currency.amountFcy).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {currency.rate}
+                          {parseFloat(currency.rate).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-mono font-semibold">
-                          {currency.amountIssuedLkr}
+                          {parseFloat(currency.amountIssuedLkr).toFixed(2)}
                         </TableCell>
                         {index === 0 && (
                           <TableCell
@@ -275,10 +269,7 @@ export const PurchaseRegister = () => {
                   )
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={10}
-                      className="text-center py-8 text-muted-foreground"
-                    >
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No transactions found
                     </TableCell>
                   </TableRow>
@@ -287,6 +278,7 @@ export const PurchaseRegister = () => {
             </Table>
           </div>
         </div>
+
         <CurrencySummary purchases={filteredPurchases} />
       </CardContent>
     </Card>
