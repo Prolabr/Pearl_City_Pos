@@ -601,7 +601,8 @@ export const CustomerReceipt = () => {
                       {pdf.fileName}
                     </TableCell>
                     <TableCell>
-                      {new Date(pdf.createdAt).toLocaleString()}
+                      {new Date(pdf.createdAt).toLocaleDateString("en-GB")}
+
                     </TableCell>
                     <TableCell>
                       <Link href={pdf.filePath} passHref target="_blank">
