@@ -67,7 +67,7 @@ export default function LoginPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-3">
-            <button className="bg-blue-600 text-white p-3 w-full rounded text-lg">
+            <button className="bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground p-2 w-full rounded disabled:opacity-50 disabled:cursor-not-allowed">
               Login
             </button>
 
