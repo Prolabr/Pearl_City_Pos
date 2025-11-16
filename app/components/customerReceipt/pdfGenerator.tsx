@@ -253,7 +253,7 @@ export const generatePDF = (
     },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY;
+  const finalY = (doc as any).lastAutoTable.finalY;
   currentY = finalY + 30;
 
   // --- Signature Sections ---

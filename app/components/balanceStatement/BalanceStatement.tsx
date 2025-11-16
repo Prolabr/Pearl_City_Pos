@@ -119,7 +119,7 @@ export default function BalanceStatement() {
   // ✅ Fetch on first load
   useEffect(() => {
     fetchBalanceData();
-  }, []);
+  }, );
 
   // ✅ Fetch deposit records when balances change
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function BalanceStatement() {
         fetchDepositRecords(balance.currencyType);
       }
     });
-  }, [balances]);
+  }, [fetchDepositRecords,visibleBalances,balances]);
 
   const handleDepositInput = (value: string) => {
     setDepositInputs((prev) => ({

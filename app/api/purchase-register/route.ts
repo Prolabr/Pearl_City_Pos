@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient,Prisma  } from "@prisma/client";
 
 
 
@@ -44,17 +44,17 @@ type CustomerReceiptCurrency = {
 
   currencyType: string;
 
-  amountFcy: any; // Prisma Decimal type
+  amountFcy: Prisma.Decimal; 
 
-  rateOffered: any; // Prisma Decimal type
+  rateOffered: Prisma.Decimal; 
 
-  amountIssuedLkr: any; // Prisma Decimal type
+  amountIssuedLkr: Prisma.Decimal; 
 
 };
 
 
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 
   try {
 

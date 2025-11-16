@@ -23,7 +23,7 @@ export async function cleanupOldPDFs(daysToKeep: number = 3) {
         await fs.unlink(filePath);
         console.log(`Deleted file: ${filePath}`);
       } catch (err) {
-        console.warn(`File not found, skipping: ${filePath}`);
+        console.warn(`File not found, skipping: ${filePath}`,err);
       }
     }
 

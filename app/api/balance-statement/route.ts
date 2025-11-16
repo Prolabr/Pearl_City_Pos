@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
 
         // ✅ AUTO-CREATE the daily record for future use
         // Create daily records for each day in the range
-        let currentDate = new Date(from);
+        const currentDate = new Date(from);
         let currentOpening = openingBalance;
         
         while (currentDate <= to) {

@@ -125,11 +125,6 @@ export const PurchaseRegister = () => {
     setTimeout(() => setLoading(false), 300);
   };
 
-  const clearDateFilters = () => {
-    setFromDate(new Date().toISOString().split("T")[0]);
-    setToDate(new Date().toISOString().split("T")[0]);
-  };
-
   const totalAmountRs = filteredPurchases.reduce(
     (sum, purchase) =>
       sum +
@@ -174,7 +169,7 @@ export const PurchaseRegister = () => {
             <p className="text-2xl font-bold text-accent">{totalAmountRs.toFixed(2)}</p>
           </div>
           <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20">
-            <p className="text-sm text-muted-foreground">Today's Date</p>
+            <p className="text-sm text-muted-foreground">Today&apos;s Date</p>
             <p className="text-2xl font-bold">{new Date().toLocaleDateString()}</p>
           </div>
         </div>

@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch today's updated closing balance
-    let current = await prisma.dailyCurrencyBalance.findUnique({
+    const current = await prisma.dailyCurrencyBalance.findUnique({
       where: { currencyType_date: { currencyType, date: day } },
     });
 
