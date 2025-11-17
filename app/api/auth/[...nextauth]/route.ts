@@ -32,11 +32,33 @@ const handler = NextAuth({
     })
   ],
 
+  callbacks: {
+    // 1. JWT Callback: Runs whenever a JWT is created (on sign-in)
+    async jwt({ token, user }) {
+      if (user) {
+        // user is available on sign in
+        token.id = user.id;
+        token.email = user.email || "";
+      }
+      return token;
+    },
+    // 2. Session Callback: Runs whenever a session is checked
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = token.id;
+        session.user.email = token.email;
+      }
+      return session;
+    },
+  },
+  // --- END CALLACKS BLOCK ---
+
   pages: {
     signIn: "/login"
   },
 
-  session: { strategy: "jwt" }
+  session: { strategy: "jwt" },
 });
+
 
 export { handler as GET, handler as POST };
