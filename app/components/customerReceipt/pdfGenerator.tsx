@@ -20,6 +20,7 @@ export interface PDFData {
   rows: CurrencyRow[];
 }
 
+
 // ================================
 // PDF Generation Function (Final)
 // ================================
@@ -253,7 +254,7 @@ export const generatePDF = (
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY;
+  const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || currentY;
   currentY = finalY + 30;
 
   // --- Signature Sections ---
