@@ -2,18 +2,20 @@
   "name": "pearlcity-pos",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint",
-    "test": "jest",
-    "db:generate": "dotenv -e .env npx prisma generate",
-    "db:migrate": "dotenv -e .env npx prisma migrate dev",
-    "db:push": "dotenv -e .env npx prisma db push",
-    "db:studio": "dotenv -e .env npx prisma studio",
-    "db:reset": "dotenv -e .env npx prisma migrate reset"
-  },
+ "scripts": {
+  "predev": "dotenv -e .env npx prisma generate && dotenv -e .env npx prisma migrate dev",
+  "dev": "npm run predev && next dev --turbopack",
+  "build": "next build --turbopack",
+  "start": "next start",
+  "lint": "eslint",
+  "test": "jest",
+  "db:generate": "dotenv -e .env npx prisma generate",
+  "db:migrate": "dotenv -e .env npx prisma migrate dev",
+  "db:push": "dotenv -e .env npx prisma db push",
+  "db:studio": "dotenv -e .env npx prisma studio",
+  "db:reset": "dotenv -e .env npx prisma migrate reset"
+},
+
   "dependencies": {
     "@prisma/client": "^6.18.0",
     "@radix-ui/react-label": "^2.1.7",
@@ -55,6 +57,7 @@
     "supertest": "^7.1.4",
     "tailwindcss": "^3.4.18",
     "ts-jest": "^29.4.5",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
